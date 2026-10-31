@@ -1,113 +1,149 @@
 ---
 name: technical-animation-engineer
-description: Create, analyze, optimize, and audit interactive HTML/SVG/JavaScript animations that teach engineering and technology topics (network protocols such as Ethernet, EtherCAT, USB, BLE, Wi-Fi; embedded systems such as FOC, motor control, FreeRTOS, DMA, ADC, PWM, SPI, I2C, UART; plus OS, computer architecture, digital/power electronics, math and physics). Use this skill when the user asks to build a technical teaching animation, convert a protocol/hardware/algorithm concept into an interactive visualization, turn a static diagram into an animation, or review, fix, or refactor an existing HTML tutorial's animations. Enforces technical-accuracy-first storyboarding with evidence tagging (SPEC/VENDOR/CHIP/SDK/TEACHING), a unified play/pause/step/reset/speed/timeline control contract, five animation type templates, visual and accessibility design rules, and automated HTML validation scripts.
+description: Create, upgrade, and audit interactive HTML/SVG/Canvas/JS animations that teach engineering topics (protocols: Ethernet, EtherCAT, USB, BLE, Wi-Fi; embedded systems: FOC, motor control, FreeRTOS, DMA, PWM, UART; plus OS, architecture, electronics, math and physics) with professional motion design: visual storytelling, motion graphics, cinematic camera work, and interactive simulation. Use this skill when the user asks to build a technical teaching animation, visually upgrade or redesign an existing tutorial animation, turn a protocol/hardware/algorithm concept into an interactive visualization, or review/fix/refactor an existing HTML tutorial's animations. Enforces technical accuracy with evidence tags (SPEC/VENDOR/CHIP/SDK/TEACHING), visual concept and motion storyboards before code, three visual quality levels (default professional-to-cinematic), a unified play/pause/step/reset/speed/timeline control contract, an independent visual quality gate, and automated HTML validation.
 license: "MIT (code) / CC-BY-4.0 (docs); see LICENSE and LICENSE-DOCS in the repository root"
 compatibility: "Output is self-contained HTML/CSS/JS with no build step. Skill scripts require Python 3.8+. Optional: Node.js for JS syntax checks, Playwright for browser tests."
 metadata:
-  version: "1.0.0"
-  maintained_by: "Technical Animation Engineer contributors"
+  version: "2.0.0"
+  maintained_by: "Technical Animation & Motion Design Engineer contributors"
 ---
 
-# Technical Animation Engineer
+# Technical Animation & Motion Design Engineer
 
 Turn engineering knowledge — protocols, electronics, motor control, RTOS
 behavior, computer architecture, physics — into **technically correct,
-interactive HTML/SVG/JavaScript teaching animations**.
+visually striking, interactive HTML/SVG/Canvas/JavaScript teaching
+animations**.
 
-**Core principle: Technical Accuracy First. Visual Quality Second.**
-Every visual decision serves the knowledge being taught. Anything shown on
-screen must be technically defensible. An animation that looks good and
-teaches something wrong is a failure.
+**Core principles:**
+1. **Technical Accuracy First.** Anything shown must be technically
+   defensible. A beautiful page that teaches something wrong is a failure.
+2. **Visual Quality Second — and mandatory.** A technically correct page that
+   is still "boxes and arrows" is *also* a failure. Flatness is a defect.
+3. **Storytelling is the delivery vehicle.** Effects must encode the knowledge
+   (particle speed = scaled signal rate; zoom = where the answer lives);
+   decoration that carries no information is removed.
 
-## Workflow (follow this order; gates are mandatory)
+## Visual quality levels
 
-1. **Analyze** — understand the knowledge point; if working on an existing
-   page, complete the audit first (see "Auditing an existing tutorial").
-2. **Design** — technical analysis → animation mapping → storyboard
-   ([assets/storyboard-template.md](assets/storyboard-template.md)).
-3. **Validate the design** — every claim classified and sourced in the
-   Evidence Table ([references/technical-accuracy.md](references/technical-accuracy.md)).
-   **Gate: a storyboard with unconfirmed technical basis must not enter
-   implementation.**
-4. **Implement** — page spec
+Every animation declares a target level (recorded in its visual concept):
+
+| Level | Name | Typical traits |
+|---|---|---|
+| L1 | Basic technical visualization | clean schematic motion, simple transitions — acceptable only for minor supporting content |
+| L2 | Professional motion graphics (**default floor**) | dynamic data streams, layered depth, glow/emphasis, precise timing, dynamic typography, meaningful highlights |
+| L3 | Cinematic interactive experience | camera moves (zoom/pan/focus), scene transitions, particle/light effects, exploded views, interactive exploration |
+
+Default target is **L2–L3**. Drop to L1 only with a stated reason (minor
+point, tiny widget). Never sacrifice comprehension for spectacle.
+
+## Workflow (gates are mandatory)
+
+1. **Analyze** — understand the knowledge point; for existing pages, complete
+   the audit first ("Auditing an existing tutorial").
+2. **Visual Concept** — before any layout/code: what is the hero moment, what
+   are the scenes, how does attention flow? Fill
+   [assets/visual-concept-template.md](assets/visual-concept-template.md)
+   ([references/visual-storytelling.md](references/visual-storytelling.md)).
+3. **Motion storyboard** — shot-by-shot: camera, layers, effects, timing,
+   captions, interactions
+   ([assets/motion-storyboard-template.md](assets/motion-storyboard-template.md),
+   [references/motion-graphics.md](references/motion-graphics.md),
+   [references/cinematic-animation.md](references/cinematic-animation.md)).
+4. **Validate the design** — every technical claim classified and sourced
+   ([references/technical-accuracy.md](references/technical-accuracy.md)).
+   **Gate: an unsourced storyboard must not enter implementation.**
+5. **Implement** — page spec
    ([assets/animation-spec-template.md](assets/animation-spec-template.md)),
-   then code ([references/svg-animation.md](references/svg-animation.md),
-   [references/timeline-control.md](references/timeline-control.md),
-   [references/visual-design.md](references/visual-design.md)).
-5. **QA** — run the validation scripts, test in a real browser, do a
-   screenshot review
-   ([references/animation-testing.md](references/animation-testing.md),
-   [references/visual-review.md](references/visual-review.md)), record
-   results in
-   [assets/validation-report-template.md](assets/validation-report-template.md).
+   then code. **Camera, scenes and effects are part of `render(t, params)`** —
+   they must be deterministic, pausable, scrubbable
+   ([references/svg-animation.md](references/svg-animation.md),
+   [references/timeline-control.md](references/timeline-control.md)).
+6. **QA — two independent gates**:
+   - *Technical gate*: validation scripts + real browser interaction tests
+     ([references/animation-testing.md](references/animation-testing.md)).
+   - *Visual Quality Gate* ([references/visual-quality-gate.md](references/visual-quality-gate.md)):
+     the 10-question expressiveness review + old-vs-new comparison. A page
+     that only got new colors/fonts/shadows **has not passed**.
+7. **Record** — fill
+   [assets/validation-report-template.md](assets/validation-report-template.md);
+   screenshot evidence for both gates.
 
 ## Evidence tags (mandatory for every animation)
 
 | Tag | Meaning | Rule |
 |---|---|---|
-| `SPEC` | Defined by a public standard (USB 2.0 ch.9, ETG.1000, Bluetooth Core) | Cite standard + clause in the storyboard |
-| `VENDOR` | One vendor's implementation (STM32 HAL, TI's Clarke convention) | Never present as the generic standard |
-| `CHIP` | Silicon-specific limit or behavior (datasheet, errata) | Name the chip |
-| `SDK` | Software stack behavior (FreeRTOS kernel, HAL library) | Name the stack + version |
-| `TEACHING` | Deliberate simplification | **Must be labeled on the page itself** |
-| `VERIFIED` | Confirmed against a citable source | Record the source |
-| `UNVERIFIED` | Not confirmed | **Release blocker — source it or drop it** |
+| `SPEC` | Defined by a public standard | cite standard + part/clause in the storyboard |
+| `VENDOR` | One vendor's implementation | never present as the generic standard |
+| `CHIP` | Silicon-specific behavior/limit | name the chip |
+| `SDK` | Software stack behavior | name the stack + version |
+| `TEACHING` | Deliberate simplification | **must be labeled on the page itself** |
+| `VERIFIED` / `UNVERIFIED` | claim status | UNVERIFIED is a release blocker |
 
-Hard rules:
-- Protocol message order and timing must not be altered for visual effect.
-- Never present vendor or SDK behavior as "how it works" in general.
-- Never present a teaching simplification as real hardware behavior.
-- If you cannot confirm a behavior, stop that part of the animation and tell
-  the user. Do not guess silently.
+Hard rules: protocol order/timing never altered for effect; vendor ≠
+standard; simplification ≠ reality; same data drives pixels and numbers; if
+unconfirmable — stop that part and say so.
 
 ## Five animation types
 
 | Type | Use for | Reference |
 |---|---|---|
-| A. Protocol Sequence | USB enumeration, EtherCAT exchange, BLE advertising/connection, Wi-Fi association | [references/animation-taxonomy.md](references/animation-taxonomy.md) |
-| B. Data Flow | Ethernet/USB packets, DMA transfers, memory copy, SPI/I2C exchange | same |
-| C. State Machine | Device/task/driver states, boot processes | same |
-| D. Physical Mechanism | FOC transforms, PWM, ADC sampling, magnetic fields | same |
-| E. Interactive Simulation | anything where changing a parameter must change the computed result | same |
+| A. Protocol Sequence | enumeration, frame exchange, association | [references/animation-taxonomy.md](references/animation-taxonomy.md) |
+| B. Data Flow | packets, DMA, buffers, pipelines | same |
+| C. State Machine | device/task/driver states | same |
+| D. Physical Mechanism | FOC, PWM, ADC, fields | same |
+| E. Interactive Simulation | parameter sensitivity | same |
 
-Not every concept needs an animation. If a static diagram explains it better,
-use a static diagram (decision rules in the taxonomy reference).
+Not every concept needs an animation — decision rules in the taxonomy.
 
 ## Unified control contract
 
-Interactive animations expose consistent controls via data attributes:
-
 | Attribute | Element | Behavior |
 |---|---|---|
-| `data-tae-action="play-pause"` | button | toggle; resume must be exact |
+| `data-tae-action="play-pause"` | button | toggle; resume exact |
 | `data-tae-action="step-fwd"` / `"step-back"` | button | exactly one defined step |
-| `data-tae-action="reset"` | button | restores ALL state, incl. user parameters |
-| `data-tae-action="speed"` | select | multiplies story-time rate |
-| `data-tae-action="scenario"` | select | named presets (incl. an exception scenario) |
-| `data-tae-timeline` | input range | scrub maps to story time |
-| `data-tae-caption` | caption container | text always matches current step |
+| `data-tae-action="reset"` | button | restores ALL state incl. parameters |
+| `data-tae-action="speed"` | select | story-time multiplier |
+| `data-tae-action="scenario"` | select | presets incl. exception scenario |
+| `data-tae-timeline` | range | scrub = story time |
+| `data-tae-caption` | container | text always matches current step |
 
-Architecture rules (full spec in
-[references/timeline-control.md](references/timeline-control.md)):
-- One timing source per page: a single timestamp-driven
-  `requestAnimationFrame` loop. **Never** combine `setInterval` timers.
-- `render(t, params)` is a pure function of timeline position + parameters;
-  all graphics and all displayed numbers derive from it.
-- Expose `window.__TAE__` (state + seek/step/reset API) so tests can drive
-  the animation.
+Architecture rules
+([references/timeline-control.md](references/timeline-control.md)):
+one timestamp-driven `requestAnimationFrame` loop; `render(t, params)` pure —
+**camera (viewBox), scene visibility, particles, glow, and every displayed
+number derive from `(t, params)`**; expose `window.__TAE__` for tests. Cinematic
+techniques never excuse a second timer.
 
-## Implementation stack
+## Motion & cinematic stack
 
-Default: hand-written HTML5 + CSS3 + vanilla JS + SVG, single self-contained
-file, no build step. Use the Web Animations API or Canvas only where SVG/CSS
-is insufficient. Add a library (D3, GSAP, Three.js) only when the knowledge
-genuinely requires it and the license is recorded — never to make a simple
-concept look impressive. Techniques: [references/svg-animation.md](references/svg-animation.md).
+- **Default:** hand-written HTML5 + CSS + vanilla JS + **SVG** (and **Canvas**
+  for particle-heavy scenes), single self-contained file, no build step.
+  Web Animations API allowed for one-shot effects (story clock stays the rAF loop).
+- **Three.js**: only for genuinely 3D structure (package internals, 3D fields);
+  MIT; heavier page — document the choice.
+- **GSAP / D3 / Motion**: allowed for non-redistributed projects when the
+  effect genuinely requires it. License check first — **GSAP is not open
+  source** (custom "no charge" license; never bundle it into redistributable
+  open-source teaching files). Record any dependency in THIRD_PARTY_NOTICES.
+- Effects catalog + implementation recipes:
+  [references/motion-graphics.md](references/motion-graphics.md). Camera work,
+  transitions, depth, lighting: [references/cinematic-animation.md](references/cinematic-animation.md).
+- Visual tokens & stage themes (incl. cinematic dark stage):
+  [references/visual-design.md](references/visual-design.md).
+
+## Visual Quality Gate (independent of the technical gate)
+
+Ten questions — "is it still boxes and arrows?", "is there a hero moment?",
+"is attention guided?", … — plus a hard rule: **background colors, fonts,
+rounded corners, shadows, plain gradients, box sizes and arrow colors alone
+do not constitute an upgrade.** Score against the old version; if not clearly
+better, iterate. Full rubric:
+[references/visual-quality-gate.md](references/visual-quality-gate.md).
 
 ## Testing (run, don't assume)
 
 ```bash
-# from the repository root (skill installed at .agents/skills/technical-animation-engineer)
 SKILL=.agents/skills/technical-animation-engineer
 python $SKILL/scripts/validate_skill.py $SKILL          # skill structure
 python $SKILL/scripts/validate_html.py <page.html>       # static HTML checks
@@ -115,56 +151,55 @@ python $SKILL/scripts/validate_animation.py <page.html>  # control contract
 node tests/browser-tests/run_browser_tests.mjs           # Playwright browser suite (optional)
 ```
 
-- `validate_html.py` / `validate_animation.py` exit 1 on errors. Fix errors;
-  judge remaining warnings (they are recommendations).
-- Static checks are not acceptance. A passing page still needs real-browser
-  interaction tests and a screenshot review
-  ([references/animation-testing.md](references/animation-testing.md),
-  [references/visual-review.md](references/visual-review.md)).
-- Record what was actually tested. Never report untested checks as passed.
+Static checks are not acceptance: every page needs real-browser interaction
+tests **and** both review gates. Record what was actually tested; untested
+checks stay marked UNTESTED.
 
 ## Auditing an existing tutorial
 
-When asked to analyze/optimize/refactor an existing HTML tutorial:
-
-1. Read the page(s); inventory every animation module (DOM/JS/SVG entry points).
-2. For each: knowledge point, animation type, implementation method,
-   interaction set.
-3. Check text ↔ animation consistency and technical accuracy per module.
-4. Produce a written audit report **before changing anything**. No mass edits
-   before the audit exists and the user has seen it.
-5. Fix or rebuild per module, starting with technically wrong content.
+1. Inventory every animation module (DOM/JS/SVG entry points, libraries).
+2. Per module: knowledge point, type, **current visual level (L1/L2/L3)**,
+   implementation, interactions, text↔animation consistency, technical
+   accuracy.
+3. Written audit report **before any change** — no mass edits before the
+   user has seen it. Severity: Blocker (teaches something wrong) / Major
+   (broken state management, dead controls) / Minor / Polish.
+4. Fix or rebuild per module; each upgrade must pass **both** gates before
+   moving on. Preserve the host tutorial's content, structure, navigation and
+   progress management unless the user asks otherwise.
 
 ## Reference loading map
 
 | When you need to… | Read |
 |---|---|
-| Choose an animation type; decide animate vs static diagram | [references/animation-taxonomy.md](references/animation-taxonomy.md) |
+| Choose type / level; decide animate vs static | [references/animation-taxonomy.md](references/animation-taxonomy.md) |
+| Write the fact storyboard; audit method details, severity levels | [references/storyboard-method.md](references/storyboard-method.md) |
+| Design the story: hero moment, scenes, attention flow | [references/visual-storytelling.md](references/visual-storytelling.md) |
+| Pick & implement effects (particles, glow, morph, exploded view…) | [references/motion-graphics.md](references/motion-graphics.md) |
+| Camera moves, transitions, depth, lighting | [references/cinematic-animation.md](references/cinematic-animation.md) |
 | Classify/verify claims; handle uncertainty | [references/technical-accuracy.md](references/technical-accuracy.md) |
-| Write a storyboard; audit an existing tutorial | [references/storyboard-method.md](references/storyboard-method.md) |
-| Implement SVG/JS animation techniques | [references/svg-animation.md](references/svg-animation.md) |
+| Implement SVG/JS/Canvas techniques | [references/svg-animation.md](references/svg-animation.md) |
 | Build the play/pause/step/reset/timeline system | [references/timeline-control.md](references/timeline-control.md) |
-| Style the page (color semantics, typography, themes) | [references/visual-design.md](references/visual-design.md) |
+| Style the page (tokens, stage themes, typography) | [references/visual-design.md](references/visual-design.md) |
 | Design interactions and parameter panels | [references/interaction-design.md](references/interaction-design.md) |
 | Make it accessible (reduced motion, contrast, keyboard) | [references/accessibility.md](references/accessibility.md) |
-| Plan and run QA | [references/animation-testing.md](references/animation-testing.md) |
-| Do the screenshot-based visual review | [references/visual-review.md](references/visual-review.md) |
+| Plan and run QA (technical gate) | [references/animation-testing.md](references/animation-testing.md) |
+| Defect review (overflow/overlap/contrast) | [references/visual-review.md](references/visual-review.md) |
+| Score expressiveness; old-vs-new comparison | [references/visual-quality-gate.md](references/visual-quality-gate.md) |
 
 ## Common pitfalls (do not do these)
 
-- Building the animation before the storyboard is technically validated.
-- One "timer" per visual effect instead of one timeline — state desyncs on
-  pause/scrub.
-- Fake numbers: an arrow "rotates" while the equation panel shows values not
-  computed from the same data.
-- Only the happy path: no timeout/retry/exception scenario.
-- Decorative motion (pulsing, bouncing) that adds no information.
-- Presenting a specific chip's behavior as the general standard.
-- Labelling page files with invented sources. If no source, tag `UNVERIFIED`.
+- Coding before the visual concept exists; skipping the storyboard.
+- **Restyle-only "upgrades"** (colors, fonts, shadows, gradients) — explicitly
+  rejected by the visual quality gate.
+- Decoration that carries no information; effects contradicting the data.
+- One timer per effect; camera/effects outside `render(t, params)`.
+- Fake numbers; only the happy path; unlabeled simplifications.
+- Presenting vendor behavior as the standard; invented sources.
+- Text rotated/blurred by camera moves; unreadable glow-on-glow contrast.
 
 ## License note
 
-Code in `scripts/` is MIT-licensed; this documentation is CC-BY-4.0. See
-`LICENSE` and `LICENSE-DOCS` in the repository root. Animations you author
-with this skill are yours; if you publish them, keep the evidence tags — they
-are what makes the page trustworthy.
+Code in `scripts/` is MIT; documentation is CC-BY-4.0 (`LICENSE`,
+`LICENSE-DOCS` in the repository root). Animations you author are yours —
+keep the evidence tags and pass both gates before publishing.

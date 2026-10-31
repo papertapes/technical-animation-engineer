@@ -50,6 +50,16 @@ standalone audit) and reference them in the validation report.
 Blockers/majors go back to implementation; re-review after fixes with fresh
 screenshots.
 
+## 6. Relation to the Visual Quality Gate
+
+This file covers *defect review* (things broken). Expressiveness is a
+separate, independent gate: the 10-question scored review and old-vs-new
+comparison protocol live in [visual-quality-gate.md](visual-quality-gate.md).
+For upgrade tasks, run both: defect review first (blockers/majors fixed),
+then the quality gate (scores recorded, delta ≥ +5 to pass). The comparison
+shot list (initial / 25% / 50% / 75% / end / exception / narrow) extends §1
+above — capture the **same list for old and new versions**.
+
 ## 5. Who reviews
 
 A reviewer that didn't write the code (another person, another agent pass)

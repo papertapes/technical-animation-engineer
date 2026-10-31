@@ -101,6 +101,27 @@ Two governing principles:
 - **Congruence:** the animation form must match the content form; discrete
   content wants discrete (stepped) display, continuous content wants motion.
 
+## Type × visual level
+
+Every animation also declares a visual level (L1 basic / L2 professional
+motion graphics / L3 cinematic interactive — definitions in SKILL.md). The
+type answers *what to show*; the level answers *how impressive the showing
+is*. The same type legitimately spans levels — a protocol sequence can be a
+L1 lane diagram or a L3 multi-scene film — but the default target is L2–L3,
+and the choice is recorded and justified in the visual concept
+([visual-storytelling.md](visual-storytelling.md)) and scored by the
+[visual-quality-gate.md](visual-quality-gate.md).
+
+| Type | L2 natural fit | L3 natural fit |
+|---|---|---|
+| A. Protocol Sequence | animated lanes, dynamic log | multi-scene film with camera + exception cut |
+| B. Data Flow | particle/data streams, trails | exploded packet anatomy, depth layers |
+| C. State Machine | lit-state diagram with motion emphasis | state tower/spaces with camera moves |
+| D. Physical Mechanism | vector/breathing-field animation | cinematic macro→system arc |
+| E. Interactive Simulation | live waveform + parameter panel | full virtual instrument with scenes |
+
+L1 is acceptable only for minor supporting widgets with a stated reason.
+
 ## Design rules baked into this skill (with their evidence)
 
 1. Step controls + captions are the primary interface; continuous playback

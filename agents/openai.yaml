@@ -8,10 +8,11 @@
 #  interface.default_prompt, policy.allow_implicit_invocation,
 #  dependencies.tools[] — only the fields used below are set).
 interface:
-  display_name: Technical Animation Engineer
+  display_name: Technical Animation & Motion Design Engineer
   short_description: >-
-    Build, audit, and fix technically accurate interactive HTML/SVG/JS
-    teaching animations for protocols, electronics, and control systems,
-    with evidence tagging and automated validation.
+    Design, build, audit, and visually upgrade technically accurate interactive
+    HTML/SVG/JS teaching animations — motion graphics, cinematic camera work,
+    visual storytelling, and interactive simulation with evidence tagging,
+    a unified control contract, and automated validation.
 policy:
   allow_implicit_invocation: true

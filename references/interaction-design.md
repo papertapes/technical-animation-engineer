@@ -54,7 +54,27 @@ in the UI at all times.
 - Optional per-step "detail" notes may live under the caption (details
   element) for depth without clutter.
 
-## 6. Anti-patterns
+## 7. Object-level interaction (L2–L3)
+
+Beyond playback controls, let learners *touch the content*:
+
+- **Click an object → inspect**: clicking a packet/field/device opens a
+  detail panel (bit grid, field table, live values). The panel is real text
+  (accessible), positioned adjacent, closable.
+- **Explode on demand**: structure visuals (packets, stacks, connectors)
+  offer an "exploded view" toggle or click-to-separate — layered separation
+  with leader lines ([motion-graphics.md](motion-graphics.md) §7).
+- **In-scene parameters**: when a quantity is on screen (duty, frequency,
+  address), a small control near it changes the scene live — not just in a
+  side panel.
+- **Scenario & exception switching** stays first-class (playback section);
+  an exception scenario is itself an interaction worth a visible affordance.
+- Discoverability: interactive objects get a hover/focus affordance
+  (outline + cursor) and an "explore" hint; keyboard focus must reach them.
+- Every inspection view derives from the same `(t, params)` state — pausing
+  then inspecting shows exactly the frozen moment.
+
+## 8. Anti-patterns
 
 - Autoplaying sound; blinking/bouncing decoration; parallax.
 - Hidden interactions (no affordance) — if it's clickable it must look and

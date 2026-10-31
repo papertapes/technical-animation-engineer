@@ -1,25 +1,41 @@
-# Technical Animation Engineer
+# Technical Animation & Motion Design Engineer
 
 An [Agent Skill](https://agentskills.io/) for AI agents: design, build, audit,
-and test **technically correct, interactive HTML/SVG/JavaScript teaching
-animations** for engineering topics — network protocols (USB, EtherCAT, BLE,
-Wi‑Fi), embedded systems (FOC, motor control, FreeRTOS, DMA, PWM, SPI/I2C/UART),
-computer architecture, electronics, and beyond.
+and test **technically correct, visually striking, interactive
+HTML/SVG/Canvas/JavaScript teaching animations** for engineering topics —
+network protocols (USB, EtherCAT, BLE, Wi‑Fi), embedded systems (FOC, motor
+control, FreeRTOS, DMA, PWM, SPI/I2C/UART), computer architecture,
+electronics, and beyond.
 
-> Core principle: **Technical Accuracy First. Visual Quality Second.**
-> Every claim shown in an animation carries an evidence tag
-> (`SPEC` / `VENDOR` / `CHIP` / `SDK` / `TEACHING`); unverifiable claims are
-> release blockers.
+> Core principles: **Technical Accuracy First. Visual Quality Second — and
+> mandatory.** A flat box-and-arrow page is a design failure; so is a
+> beautiful page that teaches something wrong. Every claim carries an
+> evidence tag (`SPEC` / `VENDOR` / `CHIP` / `SDK` / `TEACHING`);
+> unverifiable claims are release blockers.
 
 ## What's in this repository
 
 | Path | Purpose |
 |---|---|
-| `SKILL.md` | Entry point: gated workflow (analyze → storyboard → validate → implement → QA), evidence rules, unified control contract, reference loading map |
+| `SKILL.md` | Entry point: gated workflow (analyze → **visual concept** → motion storyboard → evidence validation → implement → **two QA gates**), evidence rules, unified control contract, reference loading map |
 | `agents/openai.yaml` | OpenAI Codex UI metadata (Codex-specific extension, optional) |
-| `references/` | 10 on-demand documents: animation taxonomy, technical accuracy, storyboard method & tutorial audit, SVG techniques, timeline control, visual design, interaction design, accessibility, testing, visual review |
-| `assets/` | Templates: storyboard, animation spec, validation report |
+| `references/` | 13 on-demand documents: animation taxonomy, **visual storytelling**, **motion-graphics catalog (15 effects)**, **cinematic camera work**, technical accuracy, storyboard method & tutorial audit, SVG techniques, timeline control, visual design, interaction design, accessibility, testing, visual review, **visual quality gate** |
+| `assets/` | Templates: storyboard, animation spec, validation report, **visual concept**, **motion storyboard** |
 | `scripts/` | `validate_skill.py` · `validate_html.py` · `validate_animation.py` (Python ≥ 3.8, stdlib only) |
+
+### What's new in v2.0.0 (Motion Design upgrade)
+
+- **Visual quality levels** L1 basic / **L2 professional motion graphics
+  (default floor)** / L3 cinematic interactive — declared per animation.
+- **Visual Concept + Motion Storyboard** are mandatory before any code.
+- **Independent Visual Quality Gate**: a scored 10-question review with an
+  old-vs-new comparison protocol; restyle-only changes (colors, fonts,
+  shadows, gradients) are explicitly rejected as "not an upgrade".
+- Motion-graphics catalog (particles, data streams, signal propagation,
+  exploded views, glow, light sweep, dynamic typography, parallax, depth…)
+  with the rule that every effect must encode knowledge.
+- Cinematic camera as part of the deterministic `render(t, params)` —
+  zoom/pan/focus stay pausable, scrubbable and testable.
 
 ## Install
 

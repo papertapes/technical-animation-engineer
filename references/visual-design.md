@@ -107,6 +107,40 @@ Every page defines these tokens once and uses them everywhere:
 - Ten colors where six tokens would do; ad-hoc hex values scattered in JS.
 - Icons/emoji carrying technical meaning without labels.
 
+## 10. Cinematic stage theme (for L2–L3 storytelling pages)
+
+Beyond the standard light/dark document themes, L2–L3 pages may use a
+**cinematic stage**: a dark, deep-blue/graphite canvas that lives *inside the
+SVG stage only* (the surrounding document stays in the user's theme). This
+makes luminous data — packets, pulses, glow — read like light on an
+instrument.
+
+```css
+/* stage-scoped tokens; document chrome keeps normal theme */
+.stage--cinematic { background: radial-gradient(120% 120% at 50% 30%, #10233a 0%, #0a1420 55%, #060c14 100%); }
+.stage--cinematic .surface { fill:#13263a; stroke:#2a415c; }
+.stage--cinematic .label   { fill:#b8c9dd; }
+```
+
+- Data = light: packets/pulses use the semantic colors at full saturation +
+  glow; infrastructure is dim slate; text ≥ 4.5:1 against the stage.
+- One vignette overlay (≤ 12% corner darkening) max; skip on light theme.
+- HUD/readouts stay fixed (screen-anchored), high contrast, never blurred.
+- The standard light/dark document themes remain the default for L1 and
+  always remain available — cinematic stage is a story choice, recorded in
+  the visual concept, not a global restyle.
+
+## 11. Motion duration tokens
+
+| Token | Duration | Use |
+|---|---|---|
+| `--t-enter` | 300–450 ms | element enters/leaves, emphasis pop |
+| `--t-move` | 500–900 ms | camera pan/zoom, scene transition |
+| `--t-sweep` | ≤ 700 ms | light sweep, power-on |
+| ambient | 3–4 s loop | idle breathing/dash march (reduced-motion: off) |
+
+Physics-true motion is excluded from tokens — it stays linear and true.
+
 ## 9. Verification
 
 Both themes checked by screenshot review ([visual-review.md](visual-review.md));

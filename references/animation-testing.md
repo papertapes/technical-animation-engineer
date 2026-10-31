@@ -4,8 +4,21 @@ Testing pyramid, cheapest first. A level may only be skipped for
 **deliberately omitted** controls (record it in the animation spec).
 
 ```
-static checks → contract checks → runtime (real browser) → state tests → visual review
+static checks → contract checks → runtime (real browser) → state tests → visual review → VISUAL QUALITY GATE
 ```
+
+Two gates close the pyramid. The **technical gate** (levels 1–5 plus the
+defect-focused visual review) proves the page is correct and robust. The
+**visual quality gate** ([visual-quality-gate.md](visual-quality-gate.md))
+proves it is worth watching — scored 10-question review with old-vs-new
+comparison. Both must pass for L2–L3 pages; a page that is only correct, or
+only pretty, fails.
+
+Determinism rule for motion design: **camera, scenes, particles and effects
+are part of `render(t, params)`** — asserted by scrubbing: scrub to any t,
+capture, scrub away and back to the same t, capture again; the frames must
+match. CSS/JS keyframe freewheeling for story motion fails this test and the
+contract.
 
 ## 1. Static checks — `validate_html.py`
 
