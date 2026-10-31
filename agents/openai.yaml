@@ -1,0 +1,17 @@
+# OpenAI Codex skill metadata.
+#
+# This file is a Codex-specific extension. It is NOT part of the open
+# Agent Skills specification (https://agentskills.io/specification.md).
+# Schema documented at: https://developers.openai.com/codex/skills
+# (fields: interface.display_name, interface.short_description,
+#  interface.icon_small, interface.icon_large, interface.brand_color,
+#  interface.default_prompt, policy.allow_implicit_invocation,
+#  dependencies.tools[] — only the fields used below are set).
+interface:
+  display_name: Technical Animation Engineer
+  short_description: >-
+    Build, audit, and fix technically accurate interactive HTML/SVG/JS
+    teaching animations for protocols, electronics, and control systems,
+    with evidence tagging and automated validation.
+policy:
+  allow_implicit_invocation: true
