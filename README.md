@@ -1,4 +1,4 @@
-# Technical Animation & Motion Design Engineer
+# Technical Animation & Motion Design Director
 
 An [Agent Skill](https://agentskills.io/) for AI agents: design, build, audit,
 and test **technically correct, visually striking, interactive
@@ -19,11 +19,33 @@ electronics, and beyond.
 |---|---|
 | `SKILL.md` | Entry point: gated workflow (analyze → **visual concept** → motion storyboard → evidence validation → implement → **two QA gates**), evidence rules, unified control contract, reference loading map |
 | `agents/openai.yaml` | OpenAI Codex UI metadata (Codex-specific extension, optional) |
-| `references/` | 13 on-demand documents: animation taxonomy, **visual storytelling**, **motion-graphics catalog (15 effects)**, **cinematic camera work**, technical accuracy, storyboard method & tutorial audit, SVG techniques, timeline control, visual design, interaction design, accessibility, testing, visual review, **visual quality gate** |
-| `assets/` | Templates: storyboard, animation spec, validation report, **visual concept**, **motion storyboard** |
+| `references/` | 20 on-demand documents: animation taxonomy, **visual storytelling**, **motion-graphics catalog (15 effects)**, **cinematic camera work**, technical accuracy, storyboard method & tutorial audit, SVG techniques, timeline control, visual design, interaction design, accessibility, testing, visual review, **visual quality gate** |
+| `assets/` | Templates: storyboard, animation spec, validation report, visual concept, motion storyboard, benchmark report |
+| `examples/` | Three runnable USB benchmarks (see showcase below) |
+| `benchmarks/` | Scoring methodology, per-benchmark design docs, results & screenshots |
+| `tests/` | 10-test Python suite + Playwright browser runner + GitHub Actions (`.github/workflows/ci.yml`) |
 | `scripts/` | `validate_skill.py` · `validate_html.py` · `validate_animation.py` (Python ≥ 3.8, stdlib only) |
 
-### What's new in v2.0.0 (Motion Design upgrade)
+#
+## Benchmarks — what the skill actually builds
+
+Three spec-verified, self-contained USB animations built with this skill's
+full ten-step workflow (audit → storytelling → **art direction** → storyboard
+→ prototype → visual review → technical validation → regression). Screenshots
+are real browser captures from the CI runner.
+
+| Benchmark | What it teaches | Signature visuals | Interactions |
+|---|---|---|---|
+| [**USB Enumeration**](examples/usb-enumeration/index.html) | insert → VBUS → reset → control transfers → Configured | state tower lighting floor-by-floor, SE0 propagation wave, transaction capsules with descriptor bead chains | full playback + NAK scenario + state-tower/decoder inspection + descriptor field table |
+| [**USB Packet Structure**](examples/usb-packet-structure/index.html) | waveform → packet → exploded field anatomy | oscilloscope crystallize, width-proportional exploded layers, **live spec-exact CRC** (§8.3.5) | packet-type switch, click fields, Binary/Hex, **editable ADDR/ENDP/payload with real-time CRC5/CRC16** |
+| [**USB Transfer Types**](examples/usb-transfer-types/index.html) | why Control/Bulk/Interrupt/Isochronous have different bus rhythms | frame-timeline instrument: 4 lanes with distinct scheduling heartbeats | polling-interval parameter, Bulk-NAK retry & Iso-CRC-loss scenarios, per-block inspection |
+
+Scoring (methodology: [benchmarks/visual-scoring.md](benchmarks/visual-scoring.md)):
+six weighted dimensions, thresholds TA≥90 / VC≥80 / MD≥80 / total≥85; results
+with evidence in [benchmarks/results/](benchmarks/results/). Screenshots:
+[benchmarks/results/screenshots/](benchmarks/results/screenshots/).
+
+## What's new in v2.0.0 / v2.1.0
 
 - **Visual quality levels** L1 basic / **L2 professional motion graphics
   (default floor)** / L3 cinematic interactive — declared per animation.
@@ -34,6 +56,10 @@ electronics, and beyond.
 - Motion-graphics catalog (particles, data streams, signal propagation,
   exploded views, glow, light sweep, dynamic typography, parallax, depth…)
   with the rule that every effect must encode knowledge.
+- **v2.1.0**: ten-step workflow with an **Art Direction generator** (2–3
+  compared directions per animation), composition/motion-language/hierarchy
+  systems, benchmark suite + six-dimension visual scoring, repo test suite
+  (Python + Playwright) and CI.
 - Cinematic camera as part of the deterministic `render(t, params)` —
   zoom/pan/focus stay pausable, scrubbable and testable.
 

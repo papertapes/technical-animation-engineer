@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>USB 2.0 Transfer Types — benchmark 3（v2.1.0）</title>
+<style>
+:root{--bg:#0b1420;--ink:#dbe7f5;--dim:#8aa0b8;--line:#22384f;--ctl:#b78cff;--data:#4da3ff;
+--ok:#3ddc97;--warn:#ffb454;--bad:#ff6b6b;--active:#2dd4bf;--iso:#f28c5a}
+@media (prefers-color-scheme: light){:root{--bg:#eef2f7;--ink:#16202c;--dim:#54687e;--line:#9db2c8}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+font:15px/1.6 "Segoe UI","Microsoft YaHei",system-ui,-apple-system,sans-serif}
+main{max-width:1160px;margin:0 auto;padding:22px 16px 46px}
+h1{font-size:21px;margin:0 0 2px}
+.sub{color:var(--dim);font-size:13.5px;margin:0 0 14px}
+.stage{border:1px solid #22384f;border-radius:14px;padding:6px;overflow:hidden;
+background:radial-gradient(120% 125% at 50% 30%,#10233a 0%,#060c14 62%,#060c14 100%)}
+.stage{--line:#2a415c;--ink:#dbe7f5;--dim:#8aa0b8;--ctl:#b78cff;--data:#4da3ff;--ok:#3ddc97;
+--warn:#ffb454;--bad:#ff6b6b;--active:#2dd4bf;--iso:#f28c5a}
+.stage svg{display:block;width:100%;height:auto}
+.caption{min-height:4.2em;margin:12px 2px 8px;padding:11px 15px;
+background:color-mix(in srgb,var(--ink) 6%,transparent);border-left:3px solid var(--active);border-radius:8px}
+.detail{margin:0 2px 8px;padding:9px 14px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;min-height:2.4em}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+.controls button,.controls select{font:inherit;padding:6px 13px;border-radius:9px;border:1px solid var(--line);
+background:transparent;color:var(--ink);cursor:pointer;min-width:44px;min-height:34px}
+.controls button:hover{border-color:var(--active)}
+:focus-visible{outline:2px solid var(--active);outline-offset:2px}
+input[type=range][data-tae-timeline]{flex:1 1 180px;accent-color:var(--active);min-height:34px}
+#stepinfo{font-size:12.5px;color:var(--dim);min-width:66px}
+.evidence{margin-top:18px;padding:10px 14px;border:1px dashed var(--line);border-radius:9px;font-size:12px;color:var(--dim)}
+.evidence b{color:var(--ink)}
+.mono{font-family:ui-monospace,Consolas,monospace}
+svg text{font-family:inherit}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<main>
+  <h1>USB 2.0 Transfer Types <span style="font-size:12px;color:var(--dim)">benchmark 3 · L3 · Scientific Instrument</span></h1>
+  <p class="sub">同一根总线，四种完全不同的调度节奏 · <a href="../../benchmarks/design/usb-transfer-types-design.md" style="color:var(--active)">设计文档</a></p>
+
+  <section class="stage" id="stagebox" tabindex="0" aria-label="动画。空格播放/暂停，方向键单步。">
+    <svg id="stage" viewBox="0 0 1000 560" role="img" aria-labelledby="st-t">
+      <title id="st-t">总线帧时间轴上四种传输类型的调度节奏：Control 三阶段、Interrupt 周期轮询、
+      Bulk 按需占用剩余带宽并重试、Isochronous 每帧预留且无握手不重传。</title>
+
+      <!-- time ruler: 4 frames of 1 ms -->
+      <g id="ruler" font-size="10.5" class="mono">
+        <line x1="230" y1="66" x2="960" y2="66" stroke="var(--line)" stroke-width="2"/>
+        <text id="rulerlabel" x="230" y="44" fill="var(--dim)">bus time · 4 × 1 ms 帧（HS：8 × 125 µs 微帧；本图用 FS 帧，TEACHING）</text>
+      </g>
+
+      <!-- lanes built by JS: free-bandwidth shading + transaction blocks -->
+      <g id="lanes" font-size="11.5"></g>
+
+      <!-- sweep cursor -->
+      <line id="cursor" x1="230" y1="90" x2="230" y2="520" stroke="var(--active)" stroke-width="2"/>
+    </svg>
+  </section>
+
+  <p class="caption" id="cap" data-tae-caption aria-live="polite"></p>
+  <div class="detail" id="detail">点击任意事务块查看其事务结构；切换"异常"下拉注入 NAK / CRC 错误。</div>
+
+  <div class="controls" role="group" aria-label="播放控制">
+    <button data-tae-action="reset" aria-label="重置">⟲</button>
+    <button data-tae-action="step-back" aria-label="后退一步">−1</button>
+    <button data-tae-action="play-pause" aria-label="播放">▶</button>
+    <button data-tae-action="step-fwd" aria-label="前进一步">+1</button>
+    <select data-tae-action="speed" aria-label="播放速度">
+      <option value="0.5">0.5&times;</option><option value="1" selected>1&times;</option>
+      <option value="2">2&times;</option><option value="4">4&times;</option>
+    </select>
+    <select data-tae-action="param" aria-label="Interrupt 轮询间隔">
+      <option value="1">Interrupt 间隔：每帧</option>
+      <option value="2" selected>Interrupt 间隔：每 2 帧</option>
+      <option value="4">Interrupt 间隔：每 4 帧</option>
+    </select>
+    <select data-tae-action="scenario" aria-label="异常场景">
+      <option value="normal" selected>异常：无</option>
+      <option value="bulknak">异常：Bulk 端点 NAK</option>
+      <option value="isoerr">异常：Iso 数据 CRC 错</option>
+    </select>
+    <span id="stepinfo">Step 1/8</span>
+    <input id="tl" type="range" data-tae-timeline min="0" max="1000" value="0" aria-label="时间轴">
+  </div>
+
+  <footer class="evidence" id="evidence">
+    <b>Evidence.</b> SPEC·VERIFIED（USB 2.0 规范，章节标题已对照官方文档核实）：
+    四种传输类型定义与机制（§5.5 Control / §5.6 Isochronous / §5.7 Interrupt / §5.8 Bulk）；
+    Control 三阶段（§8.5.3）；Bulk 带宽按需、NAK 后主机重试、DATA0/DATA1 交替（ch.8 已核）；
+    Interrupt 由主机按轮询间隔保证最大等待时间（§5.7、§9.6.6 bInterval）；Isochronous
+    每帧预留带宽、无握手、不重传，数据错误即丢弃（§5.6）。帧=1ms（HS 微帧 125µs，本图用 FS 帧）。
+    TEACHING（标注）：帧内事务位置与数量为示意（真实调度由主机策略决定）；时间缩放；
+    未展示 split/周期性带宽预算计算。原型 · 视觉等级 L3 · 交互：轮询间隔参数 / NAK·CRC 场景 /
+    点击事务块 / 全套播放控制 / 时间轴。
+  </footer>
+</main>
+
+<script>
+"use strict";
+/* ============ schedule model (pure, from params) ============ */
+var FRAME_X0=230, FRAME_W=180, LANES=[
+  {id:"control",  name:"Control",       y:110, color:"var(--ctl)"},
+  {id:"interrupt",name:"Interrupt",     y:210, color:"var(--ok)"},
+  {id:"bulk",     name:"Bulk",          y:310, color:"var(--data)"},
+  {id:"iso",      name:"Isochronous",   y:410, color:"var(--iso)"}
+];
+function schedule(p){
+  var blocks=[]; var fr=function(f,u,w){ return FRAME_X0 + f*FRAME_W + u*FRAME_W/8; };
+  /* control: one 3-stage cluster in frame 0 (Setup+Data+Status) */
+  blocks.push({lane:"control", f:0, u:0.8, w:3.4, label:"SETUP→ACK", kind:"ctl", info:"控制传输第一段：Setup 阶段（§8.5.3）。三阶段作为一个完整请求出现。"});
+  blocks.push({lane:"control", f:0, u:4.6, w:2.6, label:"STATUS", kind:"ok", info:"Status 阶段：零长 DATA1 方向由请求方向决定。"});
+
+  /* interrupt: poll every interval frames, tiny IN exchange */
+  var iv=Math.max(1, p.interval|0);
+  for(var f=0; f<4; f++) if(f%iv===0)
+    blocks.push({lane:"interrupt", f:f, u:0.35, w:1.2, label:"POLL", kind:"ok", periodic:true,
+      info:"Interrupt：主机每 ≤ interval 轮询一次（§5.7，bInterval）——设备等待时间有上界，数据量小。"});
+
+  /* bulk: fills remaining bandwidth, DATA0/1 toggle; NAK scenario on frame 1 */
+  var toggle=0;
+  for(var f2=0; f2<4; f2++){
+    var busy = (f2===0);                    // control/periodic 占用先排
+    if (p.scenario==="bulknak" && f2===1){
+      blocks.push({lane:"bulk", f:f2, u:1.8, w:2.2, label:"OUT→NAK", kind:"warn", info:"端点未就绪 → NAK（不是错误）：主机稍后原样重发（§5.8 / ch.8）。"});
+      continue;
+    }
+    if(!busy){
+      blocks.push({lane:"bulk", f:f2, u:1.6, w:5.8, label:"BULK "+(toggle?"DATA1":"DATA0")+"+ACK", kind:"data", info:"Bulk：按需占用剩余带宽的大块数据；DATA0/DATA1 交替，ACK 确认，NAK 重试（§5.8）。"});
+      toggle^=1;
+    }
+  }
+
+  /* iso: reserved slot every frame at a FIXED position, no handshake */
+  for(var f3=0; f3<4; f3++){
+    var err = (p.scenario==="isoerr" && f3===2);
+    blocks.push({lane:"iso", f:f3, u:0.35, w:2.4, label: err?"CRC ✗":"ISO DATA", kind: err?"bad":"iso",
+      fixed:true, info:"Isochronous：每帧固定预留位置（带宽已预留）；无握手、无重传——" + (err?"CRC 错误的数据直接丢弃，下一帧照常（§5.6）。":"实时数据宁可丢弃也不延迟（§5.6）。")});
+  }
+  return blocks;
+}
+
+/* ============ story ============ */
+var STEPS = [
+ { id:"establish", dur:2600, cap:"同一根 1 ms 帧的总线，四种传输类型要同时共存。它们的差别不在包格式，而在调度节奏——先看清每一条泳道的\"心跳\"。" },
+ { id:"control",   dur:3200, cap:"Control：一个完整请求 = Setup + Data + Status 三阶段，通常只在需要配置时出现。它稀有但必不可少——没有它就没有其它一切。" },
+ { id:"interrupt", dur:3200, cap:"Interrupt：主机按承诺的间隔准时来问（轮询间隔=bInterval）——设备的等待时间有硬上界。改上面的间隔参数，看轮询点移动。" },
+ { id:"bulk",      dur:3200, cap:"Bulk：把周期性传输剩下的带宽吃干净。大块数据 + ACK 确认 + DATA0/DATA1 交替；错了或没就绪就重试——慢，但绝不丢。" },
+ { id:"iso",       dur:3200, cap:"Isochronous：每帧同一位置预留固定带宽，数据到点就走——没有握手、没有重传。实时音频视频宁可丢一帧也不能等。" },
+ { id:"compare",   dur:3600, cap:"四条泳道同屏：Control 稀疏、Interrupt 严格周期、Bulk 见缝插针、Iso 像节拍器。这四种节奏的组合就是 USB 调度的全部。" },
+ { id:"errors",    dur:3400, cap:"异常注入（上方下拉）：Bulk 遇到 NAK 下一帧原样重试；Iso 数据 CRC 错误直接丢弃不重传——可靠性 vs 实时性的根本分野。" },
+ { id:"summary",   dur:2400, cap:"选型口诀：要配置走 Control；要准时走 Interrupt；要吞吐走 Bulk；要实时走 Isochronous。四种节奏，一条总线。" },
+];
+var DURATION=STEPS.reduce(function(a,s){return a+s.dur;},0);
+var BOUNDS=[];(function(){var a=0;for(var i=0;i<STEPS.length;i++){a+=STEPS[i].dur;BOUNDS.push(a);}})();
+var STARTS=STEPS.map(function(s,i){return i===0?0:BOUNDS[i-1];});
+
+var DEFAULTS={scenario:"normal",interval:"2"};
+var t=0,speed=1,playing=false,params={...DEFAULTS};
+var lastTick=null,rafId=null;
+
+var $=function(id){return document.getElementById(id);};
+var TL=$("tl"),CAP=$("cap"),SI=$("stepinfo"),
+    PP=document.querySelector('[data-tae-action="play-pause"]');
+function stepIndexAt(x){var i=0;while(i<STEPS.length-1&&x>=BOUNDS[i])i++;return i;}
+function phase(x,i){return Math.max(0,Math.min(1,(x-STARTS[i])/STEPS[i].dur));}
+function nextBoundary(x){for(var i=0;i<STEPS.length;i++)if(STARTS[i]>x+0.5)return STARTS[i];return DURATION;}
+function prevBoundary(x){for(var i=STEPS.length-1;i>=0;i--)if(STARTS[i]<x-0.5)return STARTS[i];return 0;}
+function easeIO(p){return p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2;}
+function setA(id,k,v){$(id).setAttribute(k,String(v));}
+function syncUI(){
+  var i=stepIndexAt(t);
+  CAP.textContent=STEPS[i].cap; CAP.dataset.taeStep=STEPS[i].id;
+  TL.value=String(Math.round(t/DURATION*1000));
+  SI.textContent="Step "+(i+1)+"/"+STEPS.length;
+  PP.textContent=playing?"⏸":"▶"; PP.setAttribute("aria-label",playing?"暂停":"播放");
+}
+function seek(nt){t=Math.max(0,Math.min(DURATION,nt));render(t,params);syncUI();}
+function tick(now){var dt=Math.min(100,now-lastTick);lastTick=now;t+=dt*speed;
+  if(t>=DURATION){t=DURATION;playing=false;render(t,params);syncUI();return;}
+  render(t,params);syncUI();rafId=requestAnimationFrame(tick);}
+function play(){if(playing)return;if(t>=DURATION)t=0;playing=true;lastTick=performance.now();rafId=requestAnimationFrame(tick);syncUI();}
+function pause(){playing=false;if(rafId)cancelAnimationFrame(rafId);rafId=null;syncUI();}
+function resetAll(){pause();t=0;params={...DEFAULTS};
+  document.querySelector('[data-tae-action="scenario"]').value=DEFAULTS.scenario;
+  document.querySelector('[data-tae-action="param"]').value=DEFAULTS.interval;
+  buildLanes(); render(t,params); syncUI();}
+
+/* ============ build lanes (once per params change) ============ */
+var NS="http://www.w3.org/2000/svg";
+function buildLanes(){
+  var g=$("lanes"); g.innerHTML="";
+  /* ruler ticks */
+  var ticks="";
+  for(var f=0;f<4;f++) ticks+='<line x1="'+(FRAME_X0+f*FRAME_W)+'" y1="60" x2="'+(FRAME_X0+f*FRAME_W)+'" y2="72" stroke="var(--ink)"/>'+
+    '<text x="'+(FRAME_X0+f*FRAME_W+FRAME_W/2)+'" y="58" text-anchor="middle" fill="var(--dim)">Frame '+f+'</text>';
+  /* keep the ruler label element alive (render() references it) */
+  $("ruler").innerHTML=ticks+
+    '<text id="rulerlabel" x="230" y="44" fill="var(--dim)">bus time · 4 × 1 ms 帧（HS：8 × 125 µs 微帧；本图用 FS 帧，TEACHING）</text>';
+  var blocks=schedule(params);
+  var byLane={};
+  blocks.forEach(function(b){ (byLane[b.lane]=byLane[b.lane]||[]).push(b); });
+  LANES.forEach(function(lane){
+    var y=lane.y;
+    var lg=document.createElementNS(NS,"g");
+    /* track */
+    var tr=document.createElementNS(NS,"rect");
+    tr.setAttribute("x",FRAME_X0); tr.setAttribute("y",y); tr.setAttribute("width",4*FRAME_W);
+    tr.setAttribute("height",56); tr.setAttribute("rx","8");
+    tr.setAttribute("fill","color-mix(in srgb,var(--ink) 4%,transparent)");
+    tr.setAttribute("stroke","var(--line)"); lg.appendChild(tr);
+    var nm=document.createElementNS(NS,"text");
+    nm.setAttribute("x",220); nm.setAttribute("y",y+33); nm.setAttribute("text-anchor","end");
+    nm.setAttribute("font-size","12.5"); nm.setAttribute("font-weight","700"); nm.setAttribute("fill",lane.color);
+    nm.textContent=lane.name; lg.appendChild(nm);
+    /* transactions */
+    (byLane[lane.id]||[]).forEach(function(b,bi){
+      var r=document.createElementNS(NS,"rect");
+      var x=FRAME_X0+b.f*FRAME_W+b.u*FRAME_W/8, w=b.w*FRAME_W/8;
+      r.setAttribute("x",x.toFixed(1)); r.setAttribute("y",y+8);
+      r.setAttribute("width",w.toFixed(1)); r.setAttribute("height",40); r.setAttribute("rx","6");
+      var fill={ctl:"var(--ctl)",ok:"var(--ok)",data:"var(--data)",warn:"var(--warn)",bad:"var(--bad)",iso:"var(--iso)"}[b.kind];
+      r.setAttribute("fill",fill); r.setAttribute("fill-opacity","0.75");
+      r.setAttribute("data-b", lane.id+"."+bi); r.setAttribute("cursor","pointer");
+      lg.appendChild(r);
+      var tx=document.createElementNS(NS,"text");
+      tx.setAttribute("x",(x+w/2).toFixed(1)); tx.setAttribute("y",y+32); tx.setAttribute("text-anchor","middle");
+      tx.setAttribute("font-size","9.8");
+      tx.setAttribute("fill",(b.kind==="warn"||b.kind==="bad")?"#1a0505":"#04121f");
+      tx.setAttribute("font-weight","600");
+      tx.textContent=b.label; tx.setAttribute("pointer-events","none");
+      lg.appendChild(tx);
+    });
+    /* handshake note under iso = "NO HANDSHAKE" */
+    if(lane.id==="iso"){
+      var nh=document.createElementNS(NS,"text");
+      nh.setAttribute("x",FRAME_X0+4*FRAME_W); nh.setAttribute("y",y+33);
+      nh.setAttribute("text-anchor","end"); nh.setAttribute("font-size","10");
+      nh.setAttribute("fill","var(--iso)");
+      nh.textContent="no handshake · no retry"; lg.appendChild(nh);
+    }
+    g.appendChild(lg);
+  });
+}
+buildLanes();
+
+/* ============ render(t, params) — pure ============ */
+function render(tt,p){
+  var i=stepIndexAt(tt), ph=phase(tt,i);
+  var sweep=tt/DURATION;
+  var cx=FRAME_X0+sweep*4*FRAME_W;
+  $("cursor").setAttribute("x1",cx.toFixed(1));
+  $("cursor").setAttribute("x2",cx.toFixed(1));
+  /* active step emphasis: dim lanes not in focus (except compare/summary) */
+  var focusLane=STEPS[i].id==="control"?"control":STEPS[i].id==="interrupt"?"interrupt":
+                STEPS[i].id==="bulk"?"bulk":STEPS[i].id==="iso"?"iso":null;
+  var g=$("lanes");
+  /* lane dimming via per-rect opacity (focus lane stays bright) */
+  var rects=g.querySelectorAll("rect[data-b]");
+  for (var k2=0;k2<rects.length;k2++){
+    var r=rects[k2];
+    var laneId=r.getAttribute("data-b").split(".")[0];
+    var dim=focusLane && laneId!==focusLane;
+    r.setAttribute("fill-opacity", dim?"0.18":"0.75");
+  }
+  var texts=g.querySelectorAll("text");
+  for (var k3=0;k3<texts.length;k3++){
+    var tx=texts[k3];
+    if(tx.getAttribute("pointer-events")!=="none") continue;
+    var laneId2=tx.previousElementSibling.getAttribute("data-b").split(".")[0];
+    var dim2=focusLane && laneId2!==focusLane;
+    tx.setAttribute("opacity", dim2?"0.55":"1");
+    tx.setAttribute("fill", dim2?"var(--dim)":"var(--ink)");
+  }
+  /* ruler label */
+  setA("rulerlabel","fill", i===0?"var(--dim)":"var(--dim)");
+}
+
+/* ============ interactions ============ */
+$("lanes").addEventListener("click",function(ev){
+  var r=ev.target.closest("[data-b]"); if(!r) return;
+  var key=r.getAttribute("data-b"), lane=key.split(".")[0], idx=parseInt(key.split(".")[1],10);
+  var blocks=schedule(params).filter(function(b){return b.lane===lane;});
+  var b=blocks[idx];
+  $("detail").innerHTML="<b>"+lane.toUpperCase()+"</b> — "+b.info;
+});
+
+/* ============ controls ============ */
+document.querySelector(".controls").addEventListener("click",function(e){
+  var b=e.target.closest("[data-tae-action]");if(!b)return;var a=b.dataset.taeAction;
+  if(a==="play-pause"){playing?pause():play();}
+  else if(a==="step-fwd"){pause();seek(nextBoundary(t));}
+  else if(a==="step-back"){pause();seek(prevBoundary(t));}
+  else if(a==="reset"){resetAll();}
+});
+document.querySelector(".controls").addEventListener("change",function(e){
+  var el=e.target.closest("[data-tae-action]");if(!el)return;
+  if(el.dataset.taeAction==="speed"){speed=parseFloat(el.value)||1;}
+  else if(el.dataset.taeAction==="param"){params.interval=el.value;buildLanes();render(t,params);syncUI();}
+  else if(el.dataset.taeAction==="scenario"){params.scenario=el.value;buildLanes();render(t,params);syncUI();}
+});
+document.querySelector(".controls").addEventListener("input",function(e){
+  var el=e.target.closest("[data-tae-timeline]");
+  if(el){var v=parseFloat(el.value);pause();seek(v/1000*DURATION);}
+});
+$("stagebox").addEventListener("keydown",function(e){
+  if(e.key===" "){e.preventDefault();playing?pause():play();}
+  else if(e.key==="ArrowRight"){e.preventDefault();pause();seek(nextBoundary(t));}
+  else if(e.key==="ArrowLeft"){e.preventDefault();pause();seek(prevBoundary(t));}
+});
+
+window.__TAE__={
+  duration:DURATION, position:function(){return t;}, playing:function(){return playing;},
+  steps:STEPS.map(function(s,i){return {id:s.id,start:STARTS[i]};}),
+  play:play, pause:pause, seek:seek, reset:resetAll,
+  step:function(n){pause();var x=t;for(var k=0;k<Math.abs(n);k++){x=n>0?nextBoundary(x):prevBoundary(x);if(n>0&&x>=DURATION)break;}seek(x);},
+  setParams:function(p2){Object.assign(params,p2);buildLanes();render(t,params);syncUI();}
+};
+render(t,params);syncUI();
+</script>
+</body>
+</html>

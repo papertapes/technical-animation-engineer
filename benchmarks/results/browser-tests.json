@@ -1,0 +1,38 @@
+[
+  {
+    "page": "usb-enumeration",
+    "errors": [],
+    "checks": [
+      {
+        "name": "scrub determinism",
+        "ok": true,
+        "detail": "{\"ok\":true,\"same\":true}"
+      }
+    ],
+    "ok": true
+  },
+  {
+    "page": "usb-packet-structure",
+    "errors": [],
+    "checks": [
+      {
+        "name": "scrub determinism",
+        "ok": true,
+        "detail": "{\"ok\":true,\"same\":true}"
+      }
+    ],
+    "ok": true
+  },
+  {
+    "page": "usb-transfer-types",
+    "errors": [],
+    "checks": [
+      {
+        "name": "scrub determinism",
+        "ok": true,
+        "detail": "{\"ok\":true,\"same\":true}"
+      }
+    ],
+    "ok": true
+  }
+]

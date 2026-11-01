@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  python-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install tooling
+        run: pip install pyyaml skills-ref
+      - name: Run test suite
+        run: python tests/run_tests.py
+
+  browser-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install Playwright
+        working-directory: tests/browser
+        run: npm install playwright && npx playwright install --with-deps chromium
+      - name: Run browser tests
+        working-directory: tests/browser
+        run: node run_repo_benchmarks.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots
+          path: benchmarks/results/screenshots/

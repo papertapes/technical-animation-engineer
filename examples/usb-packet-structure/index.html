@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>USB 2.0 Packet Structure — benchmark 2（v2.1.0, live CRC）</title>
+<style>
+:root{--bg:#0b1420;--ink:#dbe7f5;--dim:#8aa0b8;--line:#22384f;--data:#4da3ff;--ctl:#b78cff;
+--ok:#3ddc97;--warn:#ffb454;--bad:#ff6b6b;--active:#2dd4bf;--sync:#9aa7b8;--crc:#e0b45c}
+@media (prefers-color-scheme: light){
+ :root{--bg:#eef2f7;--ink:#16202c;--dim:#54687e;--line:#9db2c8}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+font:15px/1.6 "Segoe UI","Microsoft YaHei",system-ui,-apple-system,sans-serif}
+main{max-width:1140px;margin:0 auto;padding:22px 16px 46px}
+h1{font-size:21px;margin:0 0 2px}
+.sub{color:var(--dim);font-size:13.5px;margin:0 0 14px}
+.stage{border:1px solid #22384f;border-radius:14px;padding:6px;overflow:hidden;
+background:radial-gradient(120% 125% at 50% 30%,#10233a 0%,#060c14 62%,#060c14 100%)}
+.stage{--line:#2a415c;--ink:#dbe7f5;--dim:#8aa0b8;--data:#4da3ff;--ctl:#b78cff;--ok:#3ddc97;
+--warn:#ffb454;--bad:#ff6b6b;--active:#2dd4bf;--sync:#9aa7b8;--crc:#e0b45c}
+.stage svg{display:block;width:100%;height:auto}
+.caption{min-height:4.2em;margin:12px 2px 8px;padding:11px 15px;
+background:color-mix(in srgb,var(--ink) 6%,transparent);border-left:3px solid var(--active);border-radius:8px}
+.detail{margin:0 2px 8px;padding:9px 14px;border:1px solid var(--line);border-radius:8px;
+font-size:13.5px;min-height:3.4em}
+.mono{font-family:ui-monospace,Consolas,monospace}
+.detail .bits{font:13px ui-monospace,Consolas,monospace;letter-spacing:2px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+.controls button,.controls select{font:inherit;padding:6px 13px;border-radius:9px;border:1px solid var(--line);
+background:transparent;color:var(--ink);cursor:pointer;min-width:44px;min-height:34px}
+.controls button:hover{border-color:var(--active)}
+:focus-visible{outline:2px solid var(--active);outline-offset:2px}
+input[type=range][data-tae-timeline]{flex:1 1 180px;accent-color:var(--active);min-height:34px}
+#stepinfo{font-size:12.5px;color:var(--dim);min-width:66px}
+.evidence{margin-top:18px;padding:10px 14px;border:1px dashed var(--line);border-radius:9px;font-size:12px;color:var(--dim)}
+.evidence b{color:var(--ink)}
+svg text{font-family:inherit}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<main>
+  <h1>USB 包结构解析 <span style="font-size:12px;color:var(--dim)">motion-design 原型 2 · L3 爆炸图</span></h1>
+  <p class="sub">升级目标：课程 U09 包字段拆解器（packetParser）·
+  <a href="../../benchmarks/design/usb-packet-structure-design.md" style="color:var(--active)">设计文档</a> ·
+  字段位宽 / PID 值 / CRC 残差沿用课程"已核 ✅"数据（Table 8-1 等）</p>
+
+  <section class="stage" id="stagebox" tabindex="0" aria-label="动画。空格播放/暂停，方向键单步。">
+    <svg id="stage" viewBox="0 0 1000 560" role="img" aria-labelledby="st-t">
+      <title id="st-t">差分波形上的一段电平结晶为包，爆炸分离成按位宽比例的字段层，逐层解读后重新合体飞向接收方。</title>
+      <defs><filter id="blur5" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="5"/></filter></defs>
+
+      <!-- scope: NRZI waveform (concept) -->
+      <g id="scope">
+        <rect x="40" y="30" width="920" height="120" rx="8" fill="color-mix(in srgb,var(--ink) 4%,transparent)" stroke="var(--line)"/>
+        <polyline id="wave" fill="none" stroke="var(--data)" stroke-width="2"/>
+        <rect id="selbox" x="100" y="36" width="300" height="108" rx="6" fill="var(--active)" fill-opacity="0.14" stroke="var(--active)" stroke-dasharray="5 4"/>
+        <circle id="cursor" cx="60" cy="90" r="4" fill="var(--active)"/>
+        <text x="52" y="24" font-size="10.5" fill="var(--dim)">D+/D− 差分波形（概念示意，TEACHING）</text>
+        <text id="resthint" x="500" y="480" text-anchor="middle" font-size="12" fill="var(--dim)" opacity="0">结晶后，字段层将按真实位宽在此展开（宽度 ∝ 位数）</text>
+      </g>
+
+      <!-- capsule (crystallized packet) -->
+      <g id="capsule" opacity="0">
+        <rect x="200" y="200" width="600" height="64" rx="12" fill="color-mix(in srgb,var(--data) 22%,transparent)" stroke="var(--data)" stroke-width="2"/>
+        <text x="500" y="188" text-anchor="middle" font-size="12" fill="var(--dim)" id="capname">IN 令牌</text>
+      </g>
+      <!-- glow under capsule -->
+      <g id="capglow" opacity="0" filter="url(#blur5)">
+        <rect x="200" y="200" width="600" height="64" rx="12" fill="var(--data)" opacity=".5"/>
+      </g>
+
+      <!-- exploded field layers (built by JS) -->
+      <g id="layers" font-size="12"></g>
+      <!-- sync beat pulses -->
+      <g id="beats" opacity="0"></g>
+      <!-- CRC verifier -->
+      <g id="crcgear" opacity="0">
+        <circle cx="0" cy="0" r="17" fill="none" stroke="var(--crc)" stroke-width="2.5"/>
+        <circle cx="0" cy="0" r="4" fill="var(--crc)"/>
+        <g id="crcteeth" stroke="var(--crc)" stroke-width="2.5"></g>
+        <text id="crcres" x="0" y="38" text-anchor="middle" font-size="10.5" fill="var(--crc)" class="mono"></text>
+      </g>
+      <!-- flying packet + ack -->
+      <g id="flyer" opacity="0">
+        <rect x="-40" y="-14" width="80" height="28" rx="8" fill="var(--data)"/>
+        <text id="flyertxt" x="0" y="5" text-anchor="middle" font-size="11" font-weight="600" fill="#04121f">PACKET</text>
+      </g>
+      <g id="ackpulse" opacity="0">
+        <rect x="-26" y="-11" width="52" height="22" rx="6" fill="var(--ok)"/>
+        <text x="0" y="4.5" text-anchor="middle" font-size="11" font-weight="600" fill="#04121f">ACK</text>
+      </g>
+      <text id="rx" x="920" y="500" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink)" opacity="0">接收方</text>
+      <text id="tx" x="80" y="500" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink)" opacity="0">发送方</text>
+    </svg>
+  </section>
+
+  <p class="caption" id="cap" data-tae-caption aria-live="polite"></p>
+  <div class="detail" id="detail">选择包类型，点击任意字段层查看逐位说明。</div>
+  <div class="detail" id="crclab">
+    <b>CRC 实验台</b>（按 §8.3.5 原文实现：seed 全 1；高位置 0、若 高位⊕数据位=1 则异或多项式；CRC 发送 MSb first；校验残差恒为规范值）
+    <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end">
+      <label id="lab-addr">ADDR (0–127) <input id="in-addr" type="number" min="0" max="127" value="66" style="width:70px"></label>
+      <label id="lab-endp">ENDP (0–15) <input id="in-endp" type="number" min="0" max="15" value="1" style="width:60px"></label>
+      <label id="lab-pay">载荷 hex <input id="in-pay" value="31 32 33 34 35 36 37 38 39" style="width:210px" class="mono"></label>
+      <label>显示 <select id="in-mode"><option value="bin">Binary</option><option value="hex">Hex</option></select></label>
+    </div>
+    <div id="crcout" style="margin-top:8px;font:12.5px ui-monospace,Consolas,monospace;line-height:1.7"></div>
+  </div>
+
+  <div class="controls" role="group" aria-label="播放控制">
+    <button data-tae-action="reset" aria-label="重置">⟲</button>
+    <button data-tae-action="step-back" aria-label="后退一步">−1</button>
+    <button data-tae-action="play-pause" aria-label="播放">▶</button>
+    <button data-tae-action="step-fwd" aria-label="前进一步">+1</button>
+    <select data-tae-action="speed" aria-label="播放速度">
+      <option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option>
+    </select>
+    <select data-tae-action="scenario" aria-label="包类型">
+      <option value="in_tok" selected>IN 令牌</option>
+      <option value="setup_tok">SETUP 令牌</option>
+      <option value="sof">SOF 帧起始</option>
+      <option value="data1">DATA1 数据包</option>
+      <option value="ack">ACK 握手</option>
+      <option value="nak">NAK 握手</option>
+    </select>
+    <span id="stepinfo">Step 1/8</span>
+    <input id="tl" type="range" data-tae-timeline min="0" max="1000" value="0" aria-label="时间轴">
+  </div>
+
+  <footer class="evidence" id="evidence">
+    <b>Evidence.</b> SPEC·VERIFIED（USB 2.0 规范，沿用课程已核数据）：字段位宽（SYNC 8/32 位、PID 8、ADDR 7、ENDP 4、CRC5 5、
+    CRC16 16、FrameNumber 11、EOP=SE0）、PID 值与取反校验（Table 8-1，印刷页 196–197）、CRC16 残差 1000 0000 0000 1101B、
+    CRC5 残差 01100B、握手包无 CRC、NAK="暂不就绪"非错误。TEACHING（标注）：波形为概念示意；DATA 载荷按比例缩略显示；
+    时间缩放。原型 · 视觉等级 L3 · 交互：包类型切换 / 字段层点击 / 全套播放控制 / 时间轴。
+  </footer>
+</main>
+
+<script>
+"use strict";
+/* ============ packet data（沿用课程 packetParser 已核字段）============ */
+var PK = {
+ in_tok:   { name:"IN 令牌",    f:[["SYNC",8,"sync"],["PID=IN",8,"pid"],["ADDR",7,"fld"],["ENDP",4,"fld"],["CRC5",5,"crc"],["EOP",2,"eop"]], crc:"CRC5 残差 01100B（已核 ✅）", fly:"IN →" },
+ setup_tok:{ name:"SETUP 令牌", f:[["SYNC",8,"sync"],["PID=SETUP",8,"pid"],["ADDR",7,"fld"],["ENDP",4,"fld"],["CRC5",5,"crc"],["EOP",2,"eop"]], crc:"SETUP 之后恒跟 8 字节 DATA0（已核 ✅）", fly:"SETUP →" },
+ sof:      { name:"SOF 帧起始", f:[["SYNC",8,"sync"],["PID=SOF",8,"pid"],["FrameNumber",11,"fld"],["CRC5",5,"crc"],["EOP",2,"eop"]], crc:"CRC5 残差 01100B", fly:"SOF →" },
+ data1:    { name:"DATA1 数据包", f:[["SYNC",8,"sync"],["PID=DATA1",8,"pid"],["载荷",64,"pay"],["CRC16",16,"crc"],["EOP",2,"eop"]], crc:"CRC16 残差 1000 0000 0000 1101B（已核 ✅）", fly:"DATA1 →" },
+ ack:      { name:"ACK 握手",   f:[["SYNC",8,"sync"],["PID=ACK",8,"pid"],["EOP",2,"eop"]], crc:"握手包没有 CRC——4 位类型码由取反码保护", fly:"ACK →" },
+ nak:      { name:"NAK 握手",   f:[["SYNC",8,"sync"],["PID=NAK",8,"pid"],["EOP",2,"eop"]], crc:"握手包没有 CRC", fly:"NAK →" }
+};
+var PID_BITS = { "IN":["1001","0110"],"SETUP":["1101","0010"],"SOF":["0101","1010"],
+                 "DATA1":["1011","0100"],"ACK":["0010","1101"],"NAK":["1010","0101"] };
+var FIELD_DESC = {
+ SYNC:"时钟对齐前导：全/低速 8 位、高速 32 位（已核 ✅）。绘制为节拍脉冲。",
+ EOP:"包结束符：FS/LS 为 2 位 SE0（双线同时压平）。",
+ fld:"字段详见课程 U09 数据（已核 ✅）。",
+ pay:"有效数据：bulk FS ≤64 B / HS ≤512 B；此处按比例缩略显示（TEACHING）。crc 覆盖载荷。",
+ pid:"低 4 位为类型码，高 4 位为取反校验（Table 8-1）。两侧点亮 = 校验通过。",
+ crc:"由校验器逐位吞吐载荷/地址位；余数点亮即通过（残差见屏上读数）。"
+};
+
+/* ============ story ============ */
+var STEPS = [
+ { id:"scope",       dur:3000, cap:"示波器视角：D+/D− 上的电平一路滚动。光标停住——圈出的这一段里，藏着一个完整的包。", zoom:null },
+ { id:"crystallize", dur:3000, cap:"圈选的波形结晶成包的轮廓，SYNC 前导以节拍脉冲点亮：接收方靠它对齐时钟。", zoom:null },
+ { id:"explode",     dur:3200, cap:"爆开！字段沿纵轴分离成层——注意每层的宽度：它严格按真实位宽成比例（载荷缩略显示）。", zoom:[60,150,760,420] },
+ { id:"tour-pid",    dur:3200, cap:"PID 层特写：低 4 位是类型码，高 4 位是它的取反——两侧同时点亮，校验通过。这是 Table 8-1 的 16 个 PID 共同的规则。", zoom:"pid" },
+ { id:"tour-crc",    dur:3200, cap:"校验器齿轮对数据逐位吞吐，余数点亮即通过。注意握手包：根本没有 CRC 层——4 位类型码由取反码保护就够了。", zoom:"crc" },
+ { id:"tour-eop",    dur:2600, cap:"EOP：双线同时压入 SE0，位边界消失——接收方由此知道\"包到此为止\"。", zoom:null },
+ { id:"reassemble",  dur:2800, cap:"字段层合体，包恢复成一个整体。看一遍结构之后，再看波形就不再是天书。", zoom:null },
+ { id:"fly-ack",     dur:3200, cap:"包沿总线飞向接收方；接收方用自己的 CRC 复核——绿灯亮起，ACK 短脉冲原路返回。一个包的生命周期结束。", zoom:[120,330,760,240] },
+];
+var DURATION = STEPS.reduce(function(a,s){return a+s.dur;},0);
+var BOUNDS = []; (function(){ var a=0; for(var i=0;i<STEPS.length;i++){ a+=STEPS[i].dur; BOUNDS.push(a);} })();
+var STARTS = STEPS.map(function(s,i){ return i===0?0:BOUNDS[i-1]; });
+
+var DEFAULTS = { scenario:"in_tok" };
+var t=0, speed=1, playing=false, params={...DEFAULTS};
+var lastTick=null, rafId=null;
+
+var $=function(id){return document.getElementById(id);};
+var TL=$("tl"), CAP=$("cap"), SI=$("stepinfo"),
+    PP=document.querySelector('[data-tae-action="play-pause"]');
+function stepIndexAt(x){ var i=0; while(i<STEPS.length-1&&x>=BOUNDS[i]) i++; return i; }
+function phase(x,i){ return Math.max(0,Math.min(1,(x-STARTS[i])/STEPS[i].dur)); }
+function nextBoundary(x){ for(var i=0;i<STEPS.length;i++) if(STARTS[i]>x+0.5) return STARTS[i]; return DURATION; }
+function prevBoundary(x){ for(var i=STEPS.length-1;i>=0;i--) if(STARTS[i]<x-0.5) return STARTS[i]; return 0; }
+function easeIO(p){ return p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2; }
+function lerp(a,b,p){ return a+(b-a)*p; }
+function setA(id,k,v){ $(id).setAttribute(k,String(v)); }
+function syncUI(){
+  var i=stepIndexAt(t);
+  CAP.textContent=STEPS[i].cap; CAP.dataset.taeStep=STEPS[i].id;
+  TL.value=String(Math.round(t/DURATION*1000));
+  SI.textContent="Step "+(i+1)+"/"+STEPS.length;
+  PP.textContent=playing?"⏸":"▶"; PP.setAttribute("aria-label",playing?"暂停":"播放");
+}
+function seek(nt){ t=Math.max(0,Math.min(DURATION,nt)); render(t,params); syncUI(); }
+function tick(now){ var dt=Math.min(100,now-lastTick); lastTick=now; t+=dt*speed;
+  if(t>=DURATION){ t=DURATION; playing=false; render(t,params); syncUI(); return; }
+  render(t,params); syncUI(); rafId=requestAnimationFrame(tick); }
+function play(){ if(playing) return; if(t>=DURATION) t=0; playing=true; lastTick=performance.now(); rafId=requestAnimationFrame(tick); syncUI(); }
+function pause(){ playing=false; if(rafId) cancelAnimationFrame(rafId); rafId=null; syncUI(); }
+function resetAll(){ pause(); t=0; params={...DEFAULTS};
+  document.querySelector('[data-tae-action="scenario"]').value=DEFAULTS.scenario;
+  render(t,params); syncUI(); }
+
+/* ============ build layers per packet type ============ */
+var NS="http://www.w3.org/2000/svg";
+var SCALE=11;                                   // px per bit (payload capped)
+var LAYER_Y0=210, LAYER_H=38, LAYER_GAP=8;
+function buildLayers(){
+  var pk=PK[params.scenario], g=$("layers"); g.innerHTML="";
+  var totalBits=0; pk.f.forEach(function(f){ totalBits+=Math.min(f[1],32); });
+  var maxW=680, sumDisp=0;
+  pk.f.forEach(function(f){ sumDisp+=Math.min(f[1],24)*SCALE/2; });
+  var k=Math.min(1, maxW/sumDisp);
+  pk.f.forEach(function(f,i){
+    var bits=Math.min(f[1],24), w=Math.max(34,bits*SCALE/2*k);
+    var r=document.createElementNS(NS,"rect");
+    var fill={sync:"var(--sync)",pid:"var(--ctl)",fld:"var(--data)",pay:"var(--data)",crc:"var(--crc)",eop:"var(--sync)"}[f[2]];
+    r.setAttribute("id","ly"+i); r.setAttribute("height",LAYER_H); r.setAttribute("rx","7");
+    r.setAttribute("fill",fill); r.setAttribute("fill-opacity","0.8");
+    r.setAttribute("stroke","var(--line)"); r.setAttribute("cursor","pointer");
+    r.dataset.kind=f[2]; r.dataset.name=f[0]; r.dataset.bits=String(f[1]);
+    g.appendChild(r);
+    var tx=document.createElementNS(NS,"text");
+    tx.setAttribute("id","lyt"+i); tx.setAttribute("font-size","11.5"); tx.setAttribute("font-weight","600");
+    tx.setAttribute("fill","var(--ink)"); tx.textContent=f[0]+" · "+f[1]+" 位";
+    tx.dataset.kind=f[2]; tx.dataset.name=f[0]; tx.dataset.bits=String(f[1]);
+    tx.setAttribute("cursor","pointer");
+    g.appendChild(tx);
+    var bx=document.createElementNS(NS,"text");
+    bx.setAttribute("id","lyb"+i); bx.setAttribute("font-size","10"); bx.setAttribute("class","mono");
+    bx.setAttribute("fill","var(--dim)");
+    bx.textContent=f[2]==="pid"?("值 "+PID_BITS[params.scenario.split("_")[0]==="setup"?"SETUP":(params.scenario==="data1"?"DATA1":params.scenario.split("_")[0].toUpperCase())][0]+" + 取反 "+PID_BITS[params.scenario.split("_")[0]==="setup"?"SETUP":(params.scenario==="data1"?"DATA1":params.scenario.split("_")[0].toUpperCase())][1]):"";
+    g.appendChild(bx);
+  });
+  /* sync beat pulses */
+  var bg=$("beats"); bg.innerHTML="";
+  for(var b=0;b<8;b++){
+    var c=document.createElementNS(NS,"circle");
+    c.setAttribute("r","4"); c.setAttribute("fill","var(--sync)"); c.setAttribute("id","beat"+b);
+    bg.appendChild(c);
+  }
+  /* crc teeth */
+  var tg=$("crcteeth"); tg.innerHTML="";
+  for(var a2=0;a2<8;a2++){
+    var l=document.createElementNS(NS,"line");
+    var ang=a2/8*Math.PI*2;
+    l.setAttribute("x1",17*Math.cos(ang)); l.setAttribute("y1",17*Math.sin(ang));
+    l.setAttribute("x2",23*Math.cos(ang)); l.setAttribute("y2",23*Math.sin(ang));
+    tg.appendChild(l);
+  }
+}
+buildLayers();
+
+/* layer geometry: capsule position <-> exploded position */
+function layerGeom(i, n, e){
+  var explodedY = LAYER_Y0 + i*(LAYER_H+LAYER_GAP);
+  var capsY = 216;                                  // inside capsule
+  var y = lerp(capsY, explodedY, e);
+  var pk=PK[params.scenario];
+  var bits=Math.min(pk.f[i][1],24);
+  var w=Math.max(34,bits*SCALE/2*kGlobal);
+  var capsX = 200 + (600-w)/2 * (0.35+0.65*i/Math.max(1,n-1));
+  var x = lerp(capsX, 170, e);
+  return {x:x, y:y, w:w};
+}
+var kGlobal=1;
+(function(){ var pk=PK[params.scenario]; var sum=0;
+  pk.f.forEach(function(f){ sum+=Math.min(f[1],24)*SCALE/2; });
+  kGlobal=Math.min(1, 680/sum); })();
+
+/* waveform bits (concept) */
+function drawWave(){
+  var bits="0000000110010110000000011010011100011010110";
+  var pts=[], W=920, x0=40, n=bits.length, w=W/n;
+  var level=0;   // start K-ish for visual variety
+  for(var i=0;i<=n;i++){
+    if(i>0 && bits[i-1]==="0") level=1-level;
+    pts.push((x0+i*w)+","+(90+(level?26:-26)));
+  }
+  $("wave").setAttribute("points",pts.join(" "));
+}
+drawWave();
+
+/* ===== spec-exact CRC engine (USB 2.0 §8.3.5, verified against documented residuals) ===== */
+function usb5(bits){ let rem=0b11111;
+  for (const bit of bits){ const high=(rem>>4)&1; rem=(rem<<1)&0b11111; if(high^bit) rem^=0b00101; }
+  return rem ^ 0b11111; }
+function usb5residual(bits){ let rem=0b11111;
+  for (const bit of bits){ const high=(rem>>4)&1; rem=(rem<<1)&0b11111; if(high^bit) rem^=0b00101; }
+  return rem; }
+function usb16(bits){ let rem=0xFFFF;
+  for (const bit of bits){ const high=(rem>>15)&1; rem=(rem<<1)&0xFFFF; if(high^bit) rem^=0b1000000000000101; }
+  return rem ^ 0xFFFF; }
+function usb16residual(bits){ let rem=0xFFFF;
+  for (const bit of bits){ const high=(rem>>15)&1; rem=(rem<<1)&0xFFFF; if(high^bit) rem^=0b1000000000000101; }
+  return rem; }
+function bitsOf(v,n,order){ const o=[]; for(let i=0;i<n;i++) o.push(order==='lsb'?(v>>i)&1:(v>>(n-1-i))&1); return o; }
+function fmtBits(bits,mode){ return mode==='hex'
+  ? bits.join('').match(/.{1,4}/g).map(function(x){return '0x'+parseInt(x,2).toString(16).toUpperCase();}).join(' ')
+  : bits.join(' '); }
+
+/* ===== CRC lab wiring ===== */
+function updateCrcLab(){
+  var pkName=params.scenario, mode=$("in-mode").value, out=[];
+  var isToken=pkName==="in_tok"||pkName==="setup_tok";
+  $("lab-addr").style.display=isToken?"":"none";
+  $("lab-endp").style.display=isToken?"":"none";
+  $("lab-pay").style.display=pkName==="data1"?"":"none";
+  if(isToken){
+    var addr=Math.max(0,Math.min(127,parseInt($("in-addr").value,10)||0));
+    var endp=Math.max(0,Math.min(15,parseInt($("in-endp").value,10)||0));
+    var wire=[].concat(bitsOf(addr,7,"msb"), bitsOf(endp,4,"msb"));
+    var c=usb5(wire);
+    var cb=[]; for(var i=4;i>=0;i--) cb.push((c>>i)&1);
+    out.push("受保护字段（11 位，MSb first）: "+fmtBits(wire,mode));
+    out.push("CRC5（取反后发送值, MSb first）: "+fmtBits(cb,mode)+"  → 0x"+c.toString(2).length+"bit");
+    var res=usb5residual(wire.concat(cb));
+    out.push("校验残差: "+fmtBits([0,1,1,0,0],mode)+"  （规范 §8.3.5.1：01100B；实际计算 = "+fmtBits([ (res>>4)&1,(res>>3)&1,(res>>2)&1,(res>>1)&1,res&1 ],mode)+")");
+  } else if(pkName==="data1"){
+    var hex=$("in-pay").value.trim().split(/\s+/).filter(function(x){return /^[0-9a-fA-F]{1,2}$/.test(x);})
+      .map(function(x){return parseInt(x,16);});
+    var wire=[]; for (const b of hex) for (var i=0;i<8;i++) wire.push((b>>i)&1);   // bytes LSB first on wire
+    var c=usb16(wire);
+    var cb=[]; for(var j=15;j>=0;j--) cb.push((c>>j)&1);                            // CRC MSb first
+    var res=usb16residual(wire.concat(cb));
+    out.push("受保护字段（"+(hex.length)+" B, 每字节 LSB first）: "+wire.length+" 位");
+    out.push("CRC16（取反后发送值, MSb first）: "+fmtBits(cb,mode)+"  → 0x"+c.toString(16).toUpperCase());
+    out.push("校验残差: 规范 §8.3.5.2 = 1000 0000 0000 1101B（0x800D）；实际计算 = 0x"+res.toString(16).toUpperCase());
+  } else {
+    out.push("握手包没有 CRC——4 位 PID 类型码由取反码保护（§8.3.5：PID 不参与 CRC）。");
+  }
+  $("crcout").innerHTML=out.map(function(x){return "· "+x;}).join("<br>");
+}
+$("in-addr").addEventListener("input",updateCrcLab);
+$("in-endp").addEventListener("input",updateCrcLab);
+$("in-pay").addEventListener("input",updateCrcLab);
+$("in-mode").addEventListener("change",updateCrcLab);
+
+/* ============ render(t, params) — pure ============ */
+function render(tt,p){
+  var i=stepIndexAt(tt), ph=phase(tt,i), pk=PK[p.scenario];
+  setA("capname","textContent",pk.name);
+  var n=pk.f.length;
+
+  /* scope */
+  var scopeFade = i===0?1:(i===1?1-ph:0);
+  setA("scope","opacity",String(0.25+0.75*scopeFade));
+  var cx=lerp(60,940,((tt/40)%1));
+  setA("cursor","cx",cx.toFixed(1));
+  var sel=(i===0&&ph>0.45)||(i===1);
+  setA("selbox","opacity",sel?"1":"0");
+  if(i===0&&ph>0.45){ var sw=lerp(60,320,(ph-0.45)/0.55);
+    setA("selbox","x",(520-sw/2).toFixed(1)); setA("selbox","width",sw.toFixed(1)); }
+
+  /* explode factor E(t): 0 = capsule, 1 = exploded (reassemble in step 6) */
+  var e = i===2 ? easeIO(ph) : (i>=3&&i<=5 ? 1 : (i===6 ? 1-easeIO(ph) : 0));
+  var capsOp = Math.max(0, Math.min(1, 1-e*1.6));
+  setA("capsule","opacity",capsOp.toFixed(2));
+  setA("capglow","opacity",(capsOp*0.6).toFixed(2));
+  var zoomPid=(i===3), zoomCrc=(i===4);
+
+  /* layers */
+  for(var li=0;li<n;li++){
+    var geo=layerGeom(li,n,e);
+    var r=$("ly"+li);
+    r.setAttribute("x",geo.x.toFixed(1)); r.setAttribute("y",geo.y.toFixed(1));
+    r.setAttribute("width",geo.w.toFixed(1)); r.setAttribute("height",LAYER_H);
+    r.setAttribute("opacity", e>0.02||i>=2 ? "1" : "0");
+    setA("lyt"+li,"x","162");
+    setA("lyt"+li,"y",(geo.y+LAYER_H/2+4).toFixed(1));
+    setA("lyt"+li,"text-anchor","end");
+    setA("lyt"+li,"opacity", e>0.6?"1":"0");
+    var bitsTxt=$("lyb"+li);
+    bitsTxt.setAttribute("x",(geo.x+geo.w+10).toFixed(1));
+    bitsTxt.setAttribute("y",(geo.y+LAYER_H/2+4).toFixed(1));
+    bitsTxt.setAttribute("text-anchor","start");
+    bitsTxt.setAttribute("fill", zoomPid&&pk.f[li][2]==="pid" ? "var(--ctl)" : "var(--dim)");
+    bitsTxt.setAttribute("opacity", e>0.9 ? (zoomPid&&pk.f[li][2]==="pid" ? "1" : "0.9") : "0");
+    /* emphasis: tour steps dim non-focus layers */
+    var focus=(zoomPid&&pk.f[li][2]==="pid")||(zoomCrc&&pk.f[li][2]==="crc");
+    var dimming=(zoomPid||zoomCrc)&&!focus;
+    r.setAttribute("fill-opacity", dimming?"0.25":"0.8");
+    $("lyt"+li).setAttribute("opacity", dimming?"0.4":(e>0.6?"1":"0"));
+  }
+
+  /* sync beats (crystallize + explode) */
+  var beatOn=(i===1&&ph>0.4)||(i===2);
+  setA("beats","opacity",beatOn?"1":"0");
+  if(beatOn){ for(var b2=0;b2<8;b2++){
+    var bx=200+8+((tt/90)+b2*46)%560, by=232+Math.sin(tt/160+b2)*8;
+    setA("beat"+b2,"cx",bx.toFixed(1)); setA("beat"+b2,"cy",by.toFixed(1));
+    setA("beat"+b2,"opacity",String(0.85-((tt/90)+b2*46)%560/560*0.6));
+  } }
+
+  /* crc gear at crc layer */
+  var crcIdx=-1; pk.f.forEach(function(f,fi){ if(f[2]==="crc") crcIdx=fi; });
+  if(crcIdx>=0){
+    var gc=layerGeom(crcIdx,n, e>=1?1:0);
+    var gx=gc.x+gc.w-30, gy=gc.y+LAYER_H/2;
+    var gearOn=(zoomCrc)||(i>=4&&i<=5);
+    setA("crcgear","opacity",gearOn?"1":"0");
+    setA("crcgear","transform","translate("+gx.toFixed(1)+","+gy.toFixed(1)+") rotate("+((tt/6)%360).toFixed(0)+")");
+    setA("crcres","textContent",pk.crc);
+    var rr=$("crcres"); rr.setAttribute("x",gx); rr.setAttribute("y",gy+38);
+    rr.setAttribute("transform","rotate(0)");
+  } else setA("crcgear","opacity","0");
+
+  /* reassemble + fly */
+  var fly=(i===7&&ph>0.05&&ph<0.62);
+  if(fly){ var fp=(ph-0.05)/0.57;
+    setA("flyer","opacity","1");
+    setA("flyer","transform","translate("+lerp(140,880,easeIO(fp)).toFixed(1)+","+(LAYER_Y0+60)+")");
+    setA("flyertxt","textContent",pk.fly);
+  } else setA("flyer","opacity","0");
+  var ack=(i===7&&ph>=0.66&&ph<0.95);
+  setA("ackpulse","opacity",ack?"1":"0");
+  if(ack){ var ap=(ph-0.66)/0.29;
+    setA("ackpulse","transform","translate("+lerp(880,240,ap).toFixed(1)+","+(LAYER_Y0+60)+") scale("+(1-ap*0.25)+")"); }
+  setA("tx","opacity",(i===6||i===7)?"1":"0");
+  setA("rx","opacity",(i===6||i===7)?"1":"0");
+
+  setA("resthint","opacity", i<2 ? "0.75" : "0");
+
+  /* camera: per-step target, continuity from previous step's target,
+     reach framing in the first third of the step then HOLD (readable captions) */
+  function stepTarget(si){
+    var z=STEPS[si].zoom, pkk=PK[p.scenario], nn=pkk.f.length;
+    if(z==="pid"){ var gi=-1; pkk.f.forEach(function(f,fi){ if(f[2]==="pid") gi=fi; });
+      if(gi<0) return null;
+      var gp=layerGeom(gi,nn,1);
+      return [Math.max(0,gp.x+gp.w/2-210), Math.max(0,gp.y+LAYER_H/2-118), 420, 236]; }
+    if(z==="crc"){ var gc2=-1; pkk.f.forEach(function(f,fi){ if(f[2]==="crc") gc2=fi; });
+      if(gc2<0) return null;
+      var gg=layerGeom(gc2,nn,1);
+      return [Math.max(0,gg.x+gg.w/2-230), Math.max(0,gg.y+LAYER_H/2-129), 460, 258]; }
+    return z||[0,0,1000,560];
+  }
+  var target=stepTarget(i)||[0,0,1000,560];
+  var camFrom=(i===0)?[0,0,1000,560]:(stepTarget(i-1)||[0,0,1000,560]);
+  var e2=easeIO(Math.min(1,ph*3));
+  var cur=[lerp(camFrom[0],target[0],e2),lerp(camFrom[1],target[1],e2),
+           lerp(camFrom[2],target[2],e2),lerp(camFrom[3],target[3],e2)];
+  $("stage").setAttribute("viewBox",cur.map(function(v){return v.toFixed(1);}).join(" "));
+}
+
+/* ============ interactions ============ */
+$("layers").addEventListener("click",function(ev){
+  var tgt=ev.target.closest("[data-kind]"); if(!tgt) return;
+  var kind=tgt.dataset.kind, name=tgt.dataset.name, bits=tgt.dataset.bits;
+  var extra="";
+  if(kind==="pid"){ var key=name.replace("PID=","");
+    var pair=PID_BITS[key]||["----","----"];
+    extra='<div class="bits">值 '+pair[0]+" · 取反 "+pair[1]+"（高 4 位 = 低 4 位取反）</div>"; }
+  $("detail").innerHTML="<b>"+name+"</b>（"+bits+" 位）<br>"+(FIELD_DESC[kind]||"")+(extra?"<br>"+extra:"");
+});
+
+/* ============ controls ============ */
+document.querySelector(".controls").addEventListener("click",function(e){
+  var b=e.target.closest("[data-tae-action]"); if(!b) return; var a=b.dataset.taeAction;
+  if(a==="play-pause"){ playing?pause():play(); }
+  else if(a==="step-fwd"){ pause(); seek(nextBoundary(t)); }
+  else if(a==="step-back"){ pause(); seek(prevBoundary(t)); }
+  else if(a==="reset"){ resetAll(); }
+});
+document.querySelector(".controls").addEventListener("change",function(e){
+  var el=e.target.closest("[data-tae-action]"); if(!el) return;
+  if(el.dataset.taeAction==="speed"){ speed=parseFloat(el.value)||1; }
+  else if(el.dataset.taeAction==="scenario"){ params.scenario=el.value; pause(); t=0;
+    (function(){ var pk=PK[params.scenario]; var sum=0;
+      pk.f.forEach(function(f){ sum+=Math.min(f[1],24)*SCALE/2; });
+      kGlobal=Math.min(1,680/sum); })();
+    buildLayers(); updateCrcLab(); render(t,params); syncUI(); }
+});
+document.querySelector(".controls").addEventListener("input",function(e){
+  var el=e.target.closest("[data-tae-timeline]");
+  if(el){ var v=parseFloat(el.value); pause(); seek(v/1000*DURATION); }
+});
+$("stagebox").addEventListener("keydown",function(e){
+  if(e.key===" "){ e.preventDefault(); playing?pause():play(); }
+  else if(e.key==="ArrowRight"){ e.preventDefault(); pause(); seek(nextBoundary(t)); }
+  else if(e.key==="ArrowLeft"){ e.preventDefault(); pause(); seek(prevBoundary(t)); }
+});
+
+window.__TAE__={
+  duration:DURATION, position:function(){return t;}, playing:function(){return playing;},
+  steps:STEPS.map(function(s,i){return {id:s.id,start:STARTS[i]};}),
+  play:play, pause:pause, seek:seek, reset:resetAll,
+  step:function(n2){ pause(); var x=t; for(var k=0;k<Math.abs(n2);k++){ x=n2>0?nextBoundary(x):prevBoundary(x); if(n2>0&&x>=DURATION) break; } seek(x); },
+  setParams:function(p2){ Object.assign(params,p2); buildLayers(); updateCrcLab(); render(t,params); syncUI(); }
+};
+updateCrcLab();
+render(t,params); syncUI();
+</script>
+</body>
+</html>

@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>USB 2.0 Enumeration — benchmark 1（v2.1.0）</title>
+<style>
+:root{--bg:#0b1420;--stage1:#10233a;--stage2:#060c14;--ink:#dbe7f5;--dim:#8aa0b8;--line:#22384f;
+--data:#4da3ff;--ctl:#b78cff;--ok:#3ddc97;--warn:#ffb454;--bad:#ff6b6b;--power:#ffd166;--active:#2dd4bf}
+@media (prefers-color-scheme: light){
+ :root{--bg:#eef2f7;--stage1:#dbe6f2;--stage2:#b9c9dc;--ink:#16202c;--dim:#54687e;--line:#9db2c8;
+ --data:#1d6fd6;--ctl:#7a3cf0;--ok:#0d8f56;--warn:#c47400;--bad:#d63b2f;--power:#c28a00;--active:#0d9488}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+font:15px/1.6 "Segoe UI","Microsoft YaHei",system-ui,-apple-system,sans-serif}
+main{max-width:1140px;margin:0 auto;padding:22px 16px 46px}
+h1{font-size:21px;margin:0 0 2px}
+.sub{color:var(--dim);font-size:13.5px;margin:0 0 14px}
+.stage{background:radial-gradient(120% 125% at 50% 28%,var(--stage1) 0%,var(--stage2) 62%,var(--stage2) 100%);
+border:1px solid var(--line);border-radius:14px;padding:6px;position:relative;overflow:hidden}
+/* 舞台配色与页面主题解耦：影院暗场恒定（cinematic stage，见 visual-design.md §10） */
+.stage{
+ --stage1:#10233a; --stage2:#060c14; --line:#2a415c; --ink:#dbe7f5; --dim:#8aa0b8;
+ --data:#4da3ff; --ctl:#b78cff; --ok:#3ddc97; --warn:#ffb454; --bad:#ff6b6b;
+ --power:#ffd166; --active:#2dd4bf;
+}
+.stage svg{display:block;width:100%;height:auto}
+.caption{min-height:4.2em;margin:12px 2px 8px;padding:11px 15px;background:color-mix(in srgb,var(--ink) 6%,transparent);
+border-left:3px solid var(--active);border-radius:8px}
+.decode{margin:0 2px 8px;padding:8px 14px;border:1px dashed var(--line);border-radius:8px;
+font:12.5px/1.6 ui-monospace,Consolas,monospace;color:var(--dim);min-height:2.4em}
+.detail{margin:0 2px 8px;padding:9px 14px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;min-height:2.2em}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+.controls button,.controls select{font:inherit;padding:6px 13px;border-radius:9px;border:1px solid var(--line);
+background:transparent;color:var(--ink);cursor:pointer;min-width:44px;min-height:34px}
+.controls button:hover{border-color:var(--active)}
+:focus-visible{outline:2px solid var(--active);outline-offset:2px}
+input[type=range][data-tae-timeline]{flex:1 1 180px;accent-color:var(--active);min-height:34px}
+#stepinfo{font-size:12.5px;color:var(--dim);min-width:66px}
+.evidence{margin-top:18px;padding:10px 14px;border:1px dashed var(--line);border-radius:9px;font-size:12px;color:var(--dim)}
+.evidence b{color:var(--ink)}
+.descpanel table td{padding:3px 8px;border-bottom:1px solid var(--line)}
+.mono{font-family:ui-monospace,Consolas,monospace}
+svg text{font-family:inherit}
+svg .halo{paint-order:stroke;stroke:var(--stage1);stroke-width:4px;stroke-linejoin:round}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<main>
+  <h1>USB 插入与枚举 <span style="font-size:12px;color:var(--dim)">motion-design 原型 1 · L3 cinematic</span></h1>
+  <p class="sub">替换目标：课程 U12 枚举播放器（enumPlayer）·
+  <a href="../../benchmarks/design/usb-enumeration-design.md" style="color:var(--active)">设计文档</a> ·
+  事实与证据沿用课程"已核 ✅"标注（对照 USB 2.0 官方规范核实）</p>
+
+  <section class="stage" id="stagebox" tabindex="0" aria-label="动画。空格播放/暂停，方向键单步。">
+    <svg id="stage" viewBox="0 0 1000 560" role="img" aria-labelledby="st-t">
+      <title id="st-t">一根 USB 线插入后：供电、复位、控制事务往返，设备状态塔自下而上点亮至 Configured。</title>
+      <defs>
+        <filter id="blur6" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="6"/></filter>
+        <linearGradient id="sweepg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="var(--active)" stop-opacity="0"/>
+          <stop offset=".5" stop-color="var(--active)" stop-opacity=".85"/>
+          <stop offset="1" stop-color="var(--active)" stop-opacity="0"/>
+        </linearGradient>
+        <radialGradient id="vig" cx="50%" cy="30%" r="85%">
+          <stop offset=".62" stop-color="#000" stop-opacity="0"/>
+          <stop offset="1" stop-color="#000" stop-opacity=".32"/>
+        </radialGradient>
+        <clipPath id="towerclip"><rect x="740" y="150" width="160" height="320" rx="10"/></clipPath>
+      </defs>
+
+      <!-- background -->
+      <g id="bglayer" opacity=".5">
+        <g id="grid" stroke="var(--line)" stroke-width="1" opacity=".35"></g>
+      </g>
+
+      <!-- host -->
+      <g id="hostg">
+        <rect x="60" y="200" width="160" height="200" rx="12" fill="color-mix(in srgb,var(--ctl) 14%,transparent)" stroke="var(--ctl)" stroke-width="2"/>
+        <text x="140" y="238" text-anchor="middle" font-size="15" font-weight="700" fill="var(--ink)">USB Host</text>
+        <text x="140" y="262" text-anchor="middle" font-size="11.5" fill="var(--dim)">root hub · 系统软件</text>
+        <text x="140" y="330" text-anchor="middle" font-size="11" fill="var(--dim)">发起一切事务</text>
+        <circle cx="220" cy="300" r="6" fill="var(--ctl)"/>
+      </g>
+
+      <!-- device state tower -->
+      <g id="towerg">
+        <text x="820" y="136" text-anchor="middle" font-size="14.5" font-weight="700" fill="var(--ink)" class="halo">USB Device</text>
+        <g id="floors" font-size="12.5" text-anchor="middle" font-weight="600">
+          <rect id="f-configured" x="740" y="150" width="160" height="64" rx="9" fill="var(--stage1)" stroke="var(--line)"/><text id="t-configured" x="820" y="187" fill="var(--dim)">Configured</text>
+          <rect id="f-address"    x="740" y="214" width="160" height="64" rx="9" fill="var(--stage1)" stroke="var(--line)"/><text id="t-address"    x="820" y="251" fill="var(--dim)">Address</text>
+          <rect id="f-default"    x="740" y="278" width="160" height="64" rx="9" fill="var(--stage1)" stroke="var(--line)"/><text id="t-default"    x="820" y="315" fill="var(--dim)">Default</text>
+          <rect id="f-powered"    x="740" y="342" width="160" height="64" rx="9" fill="var(--stage1)" stroke="var(--line)"/><text id="t-powered"    x="820" y="379" fill="var(--dim)">Powered</text>
+          <rect id="f-attached"   x="740" y="406" width="160" height="64" rx="9" fill="var(--stage1)" stroke="var(--line)"/><text id="t-attached"   x="820" y="443" fill="var(--dim)">Attached</text>
+        </g>
+        <circle id="busylamp" cx="756" cy="300" r="5" fill="var(--warn)" opacity="0"/>
+        <!-- address plate -->
+        <g id="plate"><rect x="770" y="482" width="100" height="34" rx="7" fill="var(--stage1)" stroke="var(--line)"/>
+          <text id="addrtext" x="820" y="505" text-anchor="middle" font-size="15" font-weight="700" class="mono" fill="var(--dim)">addr 0</text></g>
+      </g>
+
+      <!-- cable: VBUS + D+/D- -->
+      <g id="cableg">
+        <line id="vbus" x1="220" y1="272" x2="740" y2="272" stroke="var(--power)" stroke-width="2" opacity=".22"/>
+        <line id="dp" x1="220" y1="294" x2="740" y2="294" stroke="var(--line)" stroke-width="2"/>
+        <line id="dm" x1="220" y1="306" x2="740" y2="306" stroke="var(--line)" stroke-width="2"/>
+        <text id="vbuslabel" x="478" y="262" text-anchor="middle" font-size="10.5" fill="var(--dim)" opacity="0">VBUS 5 V</text>
+        <text id="dpdm" x="478" y="330" text-anchor="middle" font-size="10.5" fill="var(--dim)">D+ / D−</text>
+        <text id="atthint" x="600" y="180" text-anchor="middle" font-size="12" fill="var(--active)" opacity="0" class="halo"></text>
+      </g>
+      <!-- plug (slides in during attach-1) -->
+      <g id="plug" opacity="0">
+        <rect x="-16" y="282" width="14" height="36" rx="3" fill="var(--dim)"/>
+        <rect x="-2" y="286" width="10" height="28" rx="2" fill="none" stroke="var(--dim)" stroke-width="1.5"/>
+      </g>
+      <!-- glow layer (pre-blurred duplicates, opacity-driven) -->
+      <g id="glowlayer" filter="url(#blur6)">
+        <line id="vbus-glow" x1="220" y1="272" x2="740" y2="272" stroke="var(--power)" stroke-width="5" opacity="0"/>
+      </g>
+      <!-- SE0 reset wave: two dropping wavefronts -->
+      <g id="se0" opacity="0">
+        <path id="se0a" d="M 220 294 L 260 294 L 268 306 L 740 306" fill="none" stroke="var(--bad)" stroke-width="3"/>
+        <path id="se0b" d="M 220 306 L 260 306 L 268 294 L 740 294" fill="none" stroke="var(--bad)" stroke-width="3" opacity=".55"/>
+        <text id="se0label" x="478" y="352" text-anchor="middle" font-size="11" fill="var(--bad)" class="halo">SE0 — RESET（≥ 10 ms，时间缩放 TEACHING）</text>
+      </g>
+      <!-- spark at contact -->
+      <g id="spark" opacity="0" filter="url(#blur6)">
+        <circle cx="740" cy="300" r="16" fill="var(--power)"/>
+        <circle cx="740" cy="300" r="26" fill="var(--power)" opacity=".4"/>
+      </g>
+      <!-- data layer: packet + ghosts -->
+      <g id="pktg2" opacity="0"><rect x="-34" y="290" width="68" height="20" rx="6" fill="var(--data)" opacity=".16"/></g>
+      <g id="pktg1" opacity="0"><rect x="-34" y="290" width="68" height="20" rx="6" fill="var(--data)" opacity=".38"/></g>
+      <g id="pkt" opacity="0">
+        <rect x="-38" y="286" width="76" height="28" rx="7" fill="var(--data)"/>
+        <text id="pkttext" x="0" y="305" text-anchor="middle" font-size="11" font-weight="600" fill="#04121f">SETUP</text>
+      </g>
+      <!-- descriptor beads (up to 18) -->
+      <g id="beads" font-size="9.5" class="mono"></g>
+      <!-- light sweep on tower (hero) -->
+      <g clip-path="url(#towerclip)"><rect id="sweep" x="740" y="480" width="160" height="90" fill="url(#sweepg)" opacity="0"/></g>
+      <!-- function glyph -->
+      <text id="glyph" x="820" y="236" text-anchor="middle" font-size="30" opacity="0">⌨</text>
+      <!-- vignette -->
+      <rect x="0" y="0" width="1000" height="560" fill="url(#vig)" pointer-events="none"/>
+    </svg>
+  </section>
+
+  <p class="caption" id="cap" data-tae-caption aria-live="polite"></p>
+  <div class="decode" id="decode" aria-label="当前事务解码"></div>
+  <div class="detail" id="detail">点击状态塔楼层或飞行中的数据包可查看释义。</div>
+  <div class="detail" id="descpanel" style="display:none">
+    <b>Device Descriptor（18 B · 示例值，字段定义按 §9.6.1 已核）</b>
+    <table style="width:100%;font-size:12.5px;margin-top:6px;border-collapse:collapse">
+      <tr><td>bLength/bDescriptorType</td><td class="mono">12h / 01h</td><td>bcdUSB</td><td class="mono">0200h</td></tr>
+      <tr><td>bDeviceClass/SubClass/Protocol</td><td class="mono">00h / 00h / 00h</td><td>bMaxPacketSize0</td><td class="mono">40h（64，∈{8,16,32,64}）</td></tr>
+      <tr><td>idVendor / idProduct</td><td class="mono">1234h / BEEFh（示例）</td><td>bcdDevice</td><td class="mono">0100h</td></tr>
+      <tr><td>iManufacturer / iProduct / iSerial</td><td class="mono">1 / 2 / 0</td><td>bNumConfigurations</td><td class="mono">01h</td></tr>
+    </table>
+  </div>
+
+  <div class="controls" role="group" aria-label="播放控制">
+    <button data-tae-action="reset" aria-label="重置">⟲</button>
+    <button data-tae-action="step-back" aria-label="后退一步">−1</button>
+    <button data-tae-action="play-pause" aria-label="播放">▶</button>
+    <button data-tae-action="step-fwd" aria-label="前进一步">+1</button>
+    <select data-tae-action="speed" aria-label="播放速度">
+      <option value="0.5">0.5×</option><option value="1" selected>1×</option>
+      <option value="2">2×</option><option value="4">4×</option>
+    </select>
+    <select data-tae-action="scenario" aria-label="场景">
+      <option value="normal" selected>场景：正常枚举</option>
+      <option value="nak">场景：设备 NAK 一次</option>
+    </select>
+    <button data-tae-action="descriptor" aria-label="展开描述符字段">描述符字段</button>
+    <span id="stepinfo">Step 1/9</span>
+    <input id="tl" type="range" data-tae-timeline min="0" max="1000" value="0" aria-label="时间轴">
+  </div>
+
+  <footer class="evidence" id="evidence">
+    <b>Evidence.</b> SPEC·VERIFIED（USB 2.0 规范，已对照官方文档核实）：插入检测与上拉（§7.1.5/§7.1.7）、复位 SE0 ≥10 ms（§7.1.7.5/Fig 7-29）、
+    设备状态 Attached→Powered→Default→Address→Configured（§9.1.1/Figure 9-1）、控制事务结构（§8.5.3/Fig 8-36）、
+    数据阶段自 DATA1 起、状态阶段零长 DATA1、SetAddress 于状态阶段后生效（§9.2.6）、bMaxPacketSize0∈{8,16,32,64}（§9.6.1）。
+    PRACTICE（标注）：主机先读 8 字节描述符（非规范强制条款，为主机通行实践）。
+    TEACHING（标注）：时间缩放（≈×10⁴）、描述符示例值、hub 层细节省略、火花/光带为叙事性可视化。
+    原型 · 视觉等级 L3 · 交互：场景切换 / 楼层与数据包点击 / 全套播放控制 / 时间轴。
+  </footer>
+</main>
+
+<script>
+"use strict";
+/* ============ story ============ */
+var STEPS = [
+ { id:"attach-0", dur:1600, cam:[[0,0,1012,567],[0,0,1000,560]],
+   cap:"一根 USB 线还没有插上。左边是发号施令的主机，右边是一台完全没上电的设备。插上这根线之后，到底会发生什么？",
+   dec:"— 等待连接 —" },
+ { id:"attach-1", dur:3000, cam:[[430,110,520,370],[430,110,520,370]],
+   cap:"插头滑入端口：接触瞬间 VBUS 5 V 先行供电（金色光流），设备轮廓被点亮；随后 D+ 上的 1.5 kΩ 上拉被识别——集线器知道\"非低速\"设备接入了。状态：Attached → Powered。",
+   dec:"连接检测：D+ 上拉 → Full-Speed / High-Speed 能力（§7.1.5）" },
+ { id:"reset", dur:2600, cam:[[230,110,520,370],[430,110,520,370]],
+   cap:"主机并不急着说话——它先把端口复位：D+ 与 D− 同时拉低（SE0）持续 ≥ 10 ms。设备收音机式的旧状态被清空，回到地址 0 的 Default 态。",
+   dec:"PORT_RESET：SE0 ≥ 10 ms（§7.1.7.5 / Fig 7-29）" },
+ { id:"gd8", dur:3800, cam:[[300,100,640,430],[300,100,640,430]],
+   cap:"第一段对话：主机发出 SETUP+DATA0——先只读 8 字节设备描述符（主机通行实践：先拿到 bMaxPacketSize0 才知道一次能搬多大包）。设备回 DATA1：8 个字节沿总线飞回。",
+   dec:"GET_DESCRIPTOR(Device, wLength=8)：80 06 00 01 00 00 08 00 → 12 01 00 02 00 00 00 40" },
+ { id:"addr", dur:3000, cam:[[300,100,640,430],[300,100,640,430]],
+   cap:"发工资了：SET_ADDRESS(1)。注意门牌翻转的时机——设备要等状态阶段的零长 DATA1 被 ACK 之后才切换到地址 1（§9.2.6 的特殊规则）。状态：Default → Address。",
+   dec:"SET_ADDRESS(1)：00 05 01 00 00 00 00 00（无数据阶段 → IN + 零长 DATA1）" },
+ { id:"gd18", dur:3000, cam:[[300,100,640,430],[300,100,640,430]],
+   cap:"现在按新地址重新自我介绍：完整的 18 字节设备描述符飞回——USB 版本、设备类、USB-IF 分配的 VID/PID（示例值）、端点 0 的包大小、配置个数。",
+   dec:"GET_DESCRIPTOR(Device, 18B)：bcdUSB=0200 · bDeviceClass=00 · VID/PID（示例）· bMaxPacketSize0=40h · bNumConfigurations=1" },
+ { id:"cfg", dur:3000, cam:[[300,100,640,430],[300,100,640,430]],
+   cap:"先读 9 字节配置头，拿到 wTotalLength=32，再按全量读回：配置 + 接口 + 端点描述符。主机现在知道设备提供了哪些端点。",
+   dec:"GET_DESCRIPTOR(Config, 9B→32B)：wTotalLength=0020h · bmAttributes=C0h（自供电）" },
+ { id:"setcfg", dur:3400, cam:[[300,100,640,430],[300,100,640,430]],
+   cap:"最后一步：SET_CONFIGURATION(1)。设备启用刚描述的配置——状态塔顶层亮起，一层光带自下而上扫过：设备醒了。（§9.1.1：Address → Configured）",
+   dec:"SET_CONFIGURATION(1)：00 09 01 00 00 00 00 00 → 状态阶段后设备 = Configured" },
+ { id:"done", dur:2600, cam:[[0,0,1000,560],[0,0,1000,560]],
+   cap:"枚举完成。主机知道了设备的身份、能力和供电需求；接下来的一切数据都走已配置的端点。回到开头的提问——答案就是这五层亮起的塔。",
+   dec:"— Configured：设备可被类驱动接管（后续中断/批量传输不在本片范围）—" },
+];
+var NAK_TX = true;
+var DURATION = STEPS.reduce(function(a,s){return a+s.dur;},0);
+var BOUNDS = []; (function(){ var a=0; for (var i=0;i<STEPS.length;i++){ a+=STEPS[i].dur; BOUNDS.push(a);} })();
+var STARTS = STEPS.map(function(s,i){ return i===0?0:BOUNDS[i-1]; });
+
+/* ============ state ============ */
+var DEFAULTS = { scenario:"normal" };
+var t=0, speed=1, playing=false, params={...DEFAULTS};
+var lastTick=null, rafId=null;
+var RM = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ============ engine ============ */
+var $=function(id){return document.getElementById(id);};
+var TL=$("tl"), CAP=$("cap"), SI=$("stepinfo"), DEC=$("decode"),
+    PP=document.querySelector('[data-tae-action="play-pause"]');
+function stepIndexAt(x){ var i=0; while(i<STEPS.length-1 && x>=BOUNDS[i]) i++; return i; }
+function phase(x,i){ return Math.max(0,Math.min(1,(x-STARTS[i])/STEPS[i].dur)); }
+function nextBoundary(x){ for(var i=0;i<STEPS.length;i++) if(STARTS[i]>x+0.5) return STARTS[i]; return DURATION; }
+function prevBoundary(x){ for(var i=STEPS.length-1;i>=0;i--) if(STARTS[i]<x-0.5) return STARTS[i]; return 0; }
+function easeIO(p){ return p<.5 ? 2*p*p : 1-Math.pow(-2*p+2,2)/2; }
+function lerp(a,b,p){ return a+(b-a)*p; }
+function setA(id,k,v){ $(id).setAttribute(k,String(v)); }
+function syncUI(){
+  var i=stepIndexAt(t);
+  CAP.textContent=STEPS[i].cap; CAP.dataset.taeStep=STEPS[i].id;
+  DEC.textContent=STEPS[i].dec;
+  TL.value=String(Math.round(t/DURATION*1000));
+  SI.textContent="Step "+(i+1)+"/"+STEPS.length;
+  PP.textContent=playing?"⏸":"▶"; PP.setAttribute("aria-label",playing?"暂停":"播放");
+}
+function seek(nt){ t=Math.max(0,Math.min(DURATION,nt)); render(t,params); syncUI(); }
+function tick(now){ var dt=Math.min(100,now-lastTick); lastTick=now; t+=dt*speed;
+  if(t>=DURATION){ t=DURATION; playing=false; render(t,params); syncUI(); return; }
+  render(t,params); syncUI(); rafId=requestAnimationFrame(tick); }
+function play(){ if(playing) return; if(t>=DURATION) t=0; playing=true; lastTick=performance.now(); rafId=requestAnimationFrame(tick); syncUI(); }
+function pause(){ playing=false; if(rafId) cancelAnimationFrame(rafId); rafId=null; syncUI(); }
+function resetAll(){ pause(); t=0; params={...DEFAULTS};
+  document.querySelector('[data-tae-action="scenario"]').value=DEFAULTS.scenario;
+  render(t,params); syncUI(); }
+
+/* ============ static scenery (grid) ============ */
+(function(){ var g=$("grid"), h="";
+  for(var x=40;x<1000;x+=60) h+='<line x1="'+x+'" y1="10" x2="'+x+'" y2="550"/>';
+  for(var y=30;y<560;y+=60) h+='<line x1="10" y1="'+y+'" x2="990" y2="'+y+'"/>';
+  g.innerHTML=h; })();
+
+/* ============ beads (18 max, built once) ============ */
+var BEAD_HEX=["12","01","00","02","00","00","00","40"];
+for(var bi=0;bi<18;bi++){
+  var c=document.createElementNS("http://www.w3.org/2000/svg","circle");
+  c.setAttribute("id","bd"+bi); c.setAttribute("r","9"); c.setAttribute("opacity","0");
+  c.setAttribute("fill","var(--data)"); $("beads").appendChild(c);
+  var tx=document.createElementNS("http://www.w3.org/2000/svg","text");
+  tx.setAttribute("id","bdt"+bi); tx.setAttribute("opacity","0"); tx.setAttribute("text-anchor","middle");
+  tx.setAttribute("fill","#04121f"); $("beads").appendChild(tx);
+}
+
+/* ============ camera ============ */
+function cameraAt(tt){
+  var i=stepIndexAt(tt), ph=phase(tt,i), c0=STEPS[i].cam[0], c1=STEPS[i].cam[1];
+  var e=easeIO(ph);
+  return [lerp(c0[0],c1[0],e), lerp(c0[1],c1[1],e), lerp(c0[2],c1[2],e), lerp(c0[3],c1[3],e)];
+}
+
+/* ============ render(t, params) — pure; camera & FX included ============ */
+function render(tt,p){
+  var i=stepIndexAt(tt), ph=phase(tt,i), nak=p.scenario!=="normal";
+  var cam=cameraAt(tt);
+  $("stage").setAttribute("viewBox", cam.map(function(v){return v.toFixed(1);}).join(" "));
+
+  /* ---- tower floors (cumulative) ---- */
+  var lit={};
+  lit["f-attached"]  = i>=2 || (i===1 && ph>0.75);
+  lit["f-powered"]   = i>=2 || (i===1 && ph>0.9);
+  lit["f-default"]   = i>=3 || (i===2 && ph>0.85);
+  lit["f-address"]   = i>=5 || (i===4 && ph>0.85);
+  lit["f-configured"]= i>=8 || (i===7 && ph>0.8);
+  var FL={"f-attached":"var(--ok)","f-powered":"var(--ok)","f-default":"var(--ctl)",
+          "f-address":"var(--ctl)","f-configured":"var(--active)"};
+  for(var k in lit){
+    var on=lit[k];
+    setA(k,"fill",on?FL[k]:"var(--stage1)");
+    setA(k,"stroke",on?FL[k]:"var(--line)");
+    setA(k,"opacity",on?"0.28":"1");
+    setA("t"+k.slice(1),"fill",on?FL[k]:"var(--dim)");
+    setA("t"+k.slice(1),"font-weight",on?"700":"600");
+  }
+
+  /* off-stage actors fade instead of being sliced by the camera */
+  var hostOp = i===0?1:(i===1?lerp(1,0.12,easeIO(ph)):(i>=2&&i<=7?0.12:1));
+  setA("hostg","opacity",hostOp.toFixed(2));
+
+  /* ---- plug + VBUS + spark (attach-1) ---- */
+  var plugging = i===1;
+  setA("plug","opacity", (i===0&&(ph>0.85)) || plugging || i>=2 ? "1":"0");
+  setA("plug","transform","translate("+(plugging?lerp(180,558,easeIO(ph)):558)+",0)");
+  setA("dp","stroke", i>=2?"var(--data)":"var(--line)");
+  setA("dm","stroke", i>=2?"var(--data)":"var(--line)");
+  var vbusOn = (i===1&&ph>0.5)||i>=2;
+  setA("vbus-glow","opacity", vbusOn?"0.5":"0");
+  setA("vbus","opacity", vbusOn?"0.85":"0.22");
+  setA("vbuslabel","opacity", vbusOn?"1":"0");
+  var spark=(i===1&&ph>0.72&&ph<0.9);
+  setA("spark","opacity", spark?"1":"0");
+  if(spark) setA("spark","transform","scale("+(0.6+(ph-0.72)*2)+") translate(740,300)"); else setA("spark","transform","");
+
+  /* ---- SE0 wave (reset step) ---- */
+  var resetting=(i===2&&ph>0.15&&ph<0.9);
+  setA("se0","opacity",resetting?"1":"0");
+  if(resetting){ var wp=lerp(0,470,(ph-0.15)/0.75);
+    setA("se0a","transform","translate("+wp+",0)"); setA("se0b","transform","translate("+wp+",0)");
+    setA("dp","stroke","var(--bad)"); setA("dm","stroke","var(--bad)"); }
+
+  /* insertion hint (kills the dead opening stretch) */
+  var hint = i===1 ? (ph<0.7 ? "插入检测中…" : "已识别：非低速设备（D+ 上拉）") :
+             (i===2 ? "端口复位中（SE0 ≥ 10 ms）" : null);
+  setA("atthint","opacity", hint ? "1" : "0");
+  if (hint) $("atthint").textContent = hint;
+
+  /* ---- pull-up glow marker (attach-1) ---- */
+
+  /* ---- transactions (gd8/addr/gd18/cfg/setcfg) ---- */
+  var TXN={3:true,4:true,5:true,6:true,7:true};
+  function pill(x,txt,color,op){
+    setA("pkt","opacity",op===undefined?1:op);
+    setA("pkt","transform","translate("+x.toFixed(1)+",300)");
+    $("pkt").firstElementChild.setAttribute("fill",color);
+    $("pkttext").textContent=txt;
+  }
+  var showPkt=false;
+  if(TXN[i]){
+    var S={3:[["SETUP","var(--ctl)",[0.04,0.16],"h2d"],["DATA0","var(--ctl)",[0.18,0.30],"h2d"],["ACK","var(--ok)",[0.32,0.40],"d2h"],
+             ["IN","var(--ctl)",[0.46,0.54],"h2d"]],
+           4:[["SETUP","var(--ctl)",[0.04,0.14],"h2d"],["DATA0","var(--ctl)",[0.16,0.26],"h2d"],["ACK","var(--ok)",[0.28,0.35],"d2h"],
+             ["IN","var(--ctl)",[0.40,0.48],"h2d"],["DATA1·0B","var(--data)",[0.52,0.62],"d2h"],["ACK","var(--ok)",[0.64,0.71],"h2d"]],
+           5:[["SETUP","var(--ctl)",[0.05,0.15],"h2d"],["DATA0","var(--ctl)",[0.17,0.27],"h2d"],["ACK","var(--ok)",[0.29,0.36],"d2h"],
+             ["IN","var(--ctl)",[0.42,0.50],"h2d"]],
+           6:[["SETUP","var(--ctl)",[0.05,0.15],"h2d"],["DATA0","var(--ctl)",[0.17,0.27],"h2d"],["ACK","var(--ok)",[0.29,0.36],"d2h"],
+             ["IN","var(--ctl)",[0.42,0.50],"h2d"]],
+           7:[["SETUP","var(--ctl)",[0.04,0.14],"h2d"],["DATA0","var(--ctl)",[0.16,0.26],"h2d"],["ACK","var(--ok)",[0.28,0.35],"d2h"],
+             ["IN","var(--ctl)",[0.40,0.48],"h2d"],["DATA1·0B","var(--data)",[0.52,0.62],"d2h"],["ACK","var(--ok)",[0.64,0.71],"h2d"]]}[i];
+    /* DATA-return bead chains in gd8/gd18/cfg are rendered via beads, packet pill for others */
+    var ev=null;
+    if(i===3&&nak){
+      /* nak scenario: first IN answered NAK, then retry */
+      var seq=[["SETUP","var(--ctl)",[0.04,0.13],"h2d"],["DATA0","var(--ctl)",[0.15,0.24],"h2d"],["ACK","var(--ok)",[0.26,0.32],"d2h"],
+               ["IN","var(--ctl)",[0.36,0.44],"h2d"],["NAK","var(--warn)",[0.46,0.56],"d2h"],
+               ["IN·retry","var(--ctl)",[0.62,0.70],"h2d"],["DATA1","var(--data)",[0.72,0.86],"d2h"],["ACK","var(--ok)",[0.88,0.96],"h2d"]];
+      for(var q=0;q<seq.length;q++) if(ph>=seq[q][2][0]&&ph<seq[q][2][1]) ev=seq[q];
+      setA("busylamp","opacity",(ph>=0.44&&ph<0.6)?"1":"0");
+    } else {
+      setA("busylamp","opacity","0");
+      for(var q2=0;q2<S.length;q2++) if(ph>=S[q2][2][0]&&ph<S[q2][2][1]) ev=S[q2];
+    }
+    if(ev){
+      showPkt=true;
+      var dirH2D=ev[3]==="h2d";
+      var xp=dirH2D?lerp(240,700,(ph-ev[2][0])/(ev[2][1]-ev[2][0])):lerp(700,240,(ph-ev[2][0])/(ev[2][1]-ev[2][0]));
+      pill(xp,ev[0],ev[1]);
+      var xg1=dirH2D?Math.max(240,xp-46):Math.min(700,xp+46), xg2=dirH2D?Math.max(240,xp-92):Math.min(700,xp+92);
+      setA("pktg1","opacity","1"); setA("pktg1","transform","translate("+xg1.toFixed(1)+",300)");
+      setA("pktg2","opacity","1"); setA("pktg2","transform","translate("+xg2.toFixed(1)+",300)");
+    }
+  }
+  if(!showPkt){ setA("pkt","opacity","0"); setA("pktg1","opacity","0"); setA("pktg2","opacity","0"); }
+
+  /* ---- descriptor bead chains ---- */
+  var beadCount = (i===3&&(ph>0.56||nak&&ph>0.74)) ? 8 :
+                  (i===5&&ph>0.55) ? 18 :
+                  (i===6&&ph>0.55) ? 12 : 0;   // cfg 全量 32B → 12 缩略珠（TEACHING）
+  var labels={3:BEAD_HEX,5:["12","01","00","02","34","12","BE","EF","00","00","40","01","01","02","00","01","00","01"],6:["09","02","20","00","01","01","00","C0","32","09","04","07","05"]};
+  if(i===3&&nak&&ph>0.74) {}
+  for(var b=0;b<18;b++){
+    var on=b<beadCount;
+    if(on){
+      var bx=lerp(300,660,b/17), by=300+((b%2)?18:-18);
+      setA("bd"+b,"cx",bx.toFixed(1)); setA("bd"+b,"cy",by.toFixed(1));
+      setA("bd"+b,"opacity","1");
+      var bt=$("bdt"+b); bt.setAttribute("x",bx.toFixed(1)); bt.setAttribute("y",(by+3).toFixed(1));
+      var lbl=labels[i]||BEAD_HEX;
+      bt.textContent=lbl[Math.min(b,lbl.length-1)]; bt.setAttribute("opacity","1");
+    } else { setA("bd"+b,"opacity","0"); $("bdt"+b).setAttribute("opacity","0"); }
+  }
+
+  /* ---- address plate (flips only AFTER status ACK in addr step, §9.2.6) ---- */
+  var addressed = i>4 || (i===4&&ph>0.8);
+  setA("addrtext","textContent", addressed?"addr 1":"addr 0");
+  setA("addrtext","fill", addressed?"var(--active)":"var(--dim)");
+
+  /* ---- hero: sweep + glyph ---- */
+  var sweeping=(i===7&&ph>0.8)||(i===8&&ph<0.4);
+  if(sweeping){
+    var sp2=(i===7?(ph-0.8)/0.2:0.5+ph/0.8);
+    setA("sweep","opacity","1");
+    setA("sweep","transform","translate(0,"+(-420*(1-sp2)).toFixed(1)+")");
+  } else setA("sweep","opacity","0");
+  setA("glyph","opacity", i===8?"1":"0");
+}
+
+/* ============ click inspections ============ */
+var FLOOR_INFO={
+ "f-attached":"<b>Attached</b>：设备接入端口（VBUS 已可检测）。规范 §9.1.1——此时尚未上电完成。",
+ "f-powered":"<b>Powered</b>：端口已供电（VBUS 5V）。上电顺序：先电源，后信号。",
+ "f-default":"<b>Default</b>：复位完成后。设备以地址 0 响应，只允许 EP0 的控制请求。",
+ "f-address":"<b>Address</b>：拥有唯一地址（此处为 1）。SET_ADDRESS 在状态阶段完成后才生效（§9.2.6）。",
+ "f-configured":"<b>Configured</b>：SET_CONFIGURATION 完成，接口与端点可用，功能开始工作。"
+};
+$("floors").addEventListener("click",function(e){
+  var r=e.target.closest("rect"); if(!r) return;
+  $("detail").innerHTML=FLOOR_INFO[r.id]||"";
+});
+$("pkt").addEventListener("click",function(){ $("detail").innerHTML=CAP.dataset.taeStep?("<b>当前事务：</b>"+DEC.textContent):""; });
+
+/* ============ controls ============ */
+document.querySelector(".controls").addEventListener("click",function(e){
+  var b=e.target.closest("[data-tae-action]"); if(!b) return; var a=b.dataset.taeAction;
+  if(a==="play-pause"){ playing?pause():play(); }
+  else if(a==="step-fwd"){ pause(); seek(nextBoundary(t)); }
+  else if(a==="step-back"){ pause(); seek(prevBoundary(t)); }
+  else if(a==="reset"){ resetAll(); }
+});
+document.querySelector(".controls").addEventListener("change",function(e){
+  var el=e.target.closest("[data-tae-action]"); if(!el) return;
+  if(el.dataset.taeAction==="speed"){ speed=parseFloat(el.value)||1; }
+  else if(el.dataset.taeAction==="scenario"){ params.scenario=el.value; pause(); t=0; render(t,params); syncUI(); }
+});
+document.querySelector(".controls").addEventListener("input",function(e){
+  var el=e.target.closest("[data-tae-timeline]"); if(el){ var v=parseFloat(el.value); pause(); seek(v/1000*DURATION); }
+});
+$("stagebox").addEventListener("keydown",function(e){
+  if(e.key===" "){ e.preventDefault(); playing?pause():play(); }
+  else if(e.key==="ArrowRight"){ e.preventDefault(); pause(); seek(nextBoundary(t)); }
+  else if(e.key==="ArrowLeft"){ e.preventDefault(); pause(); seek(prevBoundary(t)); }
+});
+
+window.__TAE__={
+  duration:DURATION, position:function(){return t;}, playing:function(){return playing;},
+  steps:STEPS.map(function(s,i){return {id:s.id,start:STARTS[i]};}),
+  play:play, pause:pause, seek:seek, reset:resetAll,
+  step:function(n){ pause(); var x=t; for(var k=0;k<Math.abs(n);k++){ x=n>0?nextBoundary(x):prevBoundary(x); if(n>0&&x>=DURATION) break; } seek(x); },
+  setParams:function(p2){ Object.assign(params,p2); render(t,params); syncUI(); }
+};
+render(t,params); syncUI();
+</script>
+</body>
+</html>

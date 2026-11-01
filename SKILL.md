@@ -1,14 +1,14 @@
 ---
 name: technical-animation-engineer
-description: Create, upgrade, and audit interactive HTML/SVG/Canvas/JS animations that teach engineering topics (protocols: Ethernet, EtherCAT, USB, BLE, Wi-Fi; embedded systems: FOC, motor control, FreeRTOS, DMA, PWM, UART; plus OS, architecture, electronics, math and physics) with professional motion design: visual storytelling, motion graphics, cinematic camera work, and interactive simulation. Use this skill when the user asks to build a technical teaching animation, visually upgrade or redesign an existing tutorial animation, turn a protocol/hardware/algorithm concept into an interactive visualization, or review/fix/refactor an existing HTML tutorial's animations. Enforces technical accuracy with evidence tags (SPEC/VENDOR/CHIP/SDK/TEACHING), visual concept and motion storyboards before code, three visual quality levels (default professional-to-cinematic), a unified play/pause/step/reset/speed/timeline control contract, an independent visual quality gate, and automated HTML validation.
+description: "Create, upgrade, and audit interactive HTML/SVG/Canvas/JS animations that teach engineering topics (protocols: Ethernet, EtherCAT, USB, BLE, Wi-Fi; embedded systems: FOC, motor control, FreeRTOS, DMA, PWM, UART; plus OS, architecture, electronics, math and physics) with professional motion design: visual storytelling, motion graphics, cinematic camera work, and interactive simulation. Use this skill when the user asks to build a technical teaching animation, visually upgrade or redesign an existing tutorial animation, turn a protocol/hardware/algorithm concept into an interactive visualization, or review/fix/refactor an existing HTML tutorial's animations. Enforces technical accuracy with evidence tags (SPEC/VENDOR/CHIP/SDK/TEACHING), visual concept and motion storyboards before code, three visual quality levels (default professional-to-cinematic), a unified play/pause/step/reset/speed/timeline control contract, an independent visual quality gate, and automated HTML validation."
 license: "MIT (code) / CC-BY-4.0 (docs); see LICENSE and LICENSE-DOCS in the repository root"
 compatibility: "Output is self-contained HTML/CSS/JS with no build step. Skill scripts require Python 3.8+. Optional: Node.js for JS syntax checks, Playwright for browser tests."
 metadata:
-  version: "2.0.0"
+  version: "2.1.0"
   maintained_by: "Technical Animation & Motion Design Engineer contributors"
 ---
 
-# Technical Animation & Motion Design Engineer
+# Technical Animation & Motion Design Director
 
 Turn engineering knowledge — protocols, electronics, motor control, RTOS
 behavior, computer architecture, physics — into **technically correct,
@@ -37,37 +37,53 @@ Every animation declares a target level (recorded in its visual concept):
 Default target is **L2–L3**. Drop to L1 only with a stated reason (minor
 point, tiny widget). Never sacrifice comprehension for spectacle.
 
-## Workflow (gates are mandatory)
+## Workflow (ten steps; gates are mandatory)
 
-1. **Analyze** — understand the knowledge point; for existing pages, complete
-   the audit first ("Auditing an existing tutorial").
-2. **Visual Concept** — before any layout/code: what is the hero moment, what
-   are the scenes, how does attention flow? Fill
-   [assets/visual-concept-template.md](assets/visual-concept-template.md)
-   ([references/visual-storytelling.md](references/visual-storytelling.md)).
-3. **Motion storyboard** — shot-by-shot: camera, layers, effects, timing,
-   captions, interactions
-   ([assets/motion-storyboard-template.md](assets/motion-storyboard-template.md),
-   [references/motion-graphics.md](references/motion-graphics.md),
-   [references/cinematic-animation.md](references/cinematic-animation.md)).
-4. **Validate the design** — every technical claim classified and sourced
-   ([references/technical-accuracy.md](references/technical-accuracy.md)).
-   **Gate: an unsourced storyboard must not enter implementation.**
-5. **Implement** — page spec
-   ([assets/animation-spec-template.md](assets/animation-spec-template.md)),
-   then code. **Camera, scenes and effects are part of `render(t, params)`** —
-   they must be deterministic, pausable, scrubbable
-   ([references/svg-animation.md](references/svg-animation.md),
-   [references/timeline-control.md](references/timeline-control.md)).
-6. **QA — two independent gates**:
-   - *Technical gate*: validation scripts + real browser interaction tests
-     ([references/animation-testing.md](references/animation-testing.md)).
-   - *Visual Quality Gate* ([references/visual-quality-gate.md](references/visual-quality-gate.md)):
-     the 10-question expressiveness review + old-vs-new comparison. A page
-     that only got new colors/fonts/shadows **has not passed**.
-7. **Record** — fill
-   [assets/validation-report-template.md](assets/validation-report-template.md);
-   screenshot evidence for both gates.
+**Step 1 — Technical Understanding.** Objects, mechanism, data structures,
+states, timing, key events, exception paths, standard basis, vendor
+differences ([references/technical-accuracy.md](references/technical-accuracy.md)).
+
+**Step 2 — Visual Storytelling.** Before any code: the hero moment, what gets
+zoomed/cutaway, what the learner sees first
+([references/visual-storytelling.md](references/visual-storytelling.md),
+[assets/visual-concept-template.md](assets/visual-concept-template.md)).
+
+**Step 3 — Art Direction.** Propose **2–3 clearly different visual
+directions** (archetypes: Cinematic Dark Laboratory, Scientific Instrument,
+Technical Editorial, Blueprint, Kinetic Infographic — see
+[references/art-direction.md](references/art-direction.md)); compare, select
+the strongest teaching fit, record why.
+
+**Step 4 — Storyboard.** Scene sheet: Scene ID, purpose, knowledge point,
+objects, composition ([references/composition-and-layout.md](references/composition-and-layout.md)),
+camera, motion ([references/motion-language.md](references/motion-language.md)),
+time range, interactions, end state
+([assets/motion-storyboard-template.md](assets/motion-storyboard-template.md)).
+
+**Step 5 — High-Fidelity Prototype.** A runnable independent HTML with full
+visual design and real motion — never a static mock, and never a direct edit
+of an existing tutorial page at this stage.
+
+**Step 6 — Visual Review.** Focal point present? hierarchy clear? rhythm
+natural? transitions smooth? objects refined? boxes-and-arrows escaped? no
+meaningless decoration?
+([references/visual-hierarchy.md](references/visual-hierarchy.md)).
+
+**Step 7 — Technical Validation.** The visual may not change real behavior;
+states are driven by the simulation, numbers by the same data
+([references/technical-accuracy.md](references/technical-accuracy.md)).
+
+**Step 8 — Integration.** Merge into the host tutorial only after acceptance;
+preserve its content, navigation, progress and other widgets.
+
+**Step 9 — Regression Testing.** Host tutorial unaffected + new animation
+passes the technical gate
+([references/animation-testing.md](references/animation-testing.md)).
+
+**Step 10 — Final Review.** Old-vs-new comparison screenshots, real browser
+run, visual scoring ([references/visual-quality-gate.md](references/visual-quality-gate.md),
+[references/benchmark-design.md](references/benchmark-design.md)). No claim of
+visual acceptance without a real browser run.
 
 ## Evidence tags (mandatory for every animation)
 
@@ -173,6 +189,12 @@ checks stay marked UNTESTED.
 | When you need to… | Read |
 |---|---|
 | Choose type / level; decide animate vs static | [references/animation-taxonomy.md](references/animation-taxonomy.md) |
+| Run the art-direction generator (2–3 directions) | [references/art-direction.md](references/art-direction.md) |
+| Choose composition per scene | [references/composition-and-layout.md](references/composition-and-layout.md) |
+| Apply the motion language (six questions per motion) | [references/motion-language.md](references/motion-language.md) |
+| Enforce information hierarchy | [references/visual-hierarchy.md](references/visual-hierarchy.md) |
+| Study external references legally | [references/visual-reference-analysis.md](references/visual-reference-analysis.md) |
+| Design/verify benchmarks | [references/benchmark-design.md](references/benchmark-design.md) |
 | Write the fact storyboard; audit method details, severity levels | [references/storyboard-method.md](references/storyboard-method.md) |
 | Design the story: hero moment, scenes, attention flow | [references/visual-storytelling.md](references/visual-storytelling.md) |
 | Pick & implement effects (particles, glow, morph, exploded view…) | [references/motion-graphics.md](references/motion-graphics.md) |

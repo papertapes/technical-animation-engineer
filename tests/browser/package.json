@@ -1,0 +1,6 @@
+{
+  "name": "tae-repo-browser-tests",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node run_repo_benchmarks.mjs" }
+}

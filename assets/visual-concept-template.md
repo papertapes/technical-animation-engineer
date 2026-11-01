@@ -1,7 +1,7 @@
 # Visual Concept: &lt;Animation Title&gt;
 
 > Fill this **before any layout or code** (SKILL.md workflow step 2).
-> Method: [references/visual-storytelling.md](../../references/visual-storytelling.md).
+> Method: [references/visual-storytelling.md](../references/visual-storytelling.md).
 > Reviewed like a design doc — a weak concept is cheaper to fix than a page.
 
 ## Identification

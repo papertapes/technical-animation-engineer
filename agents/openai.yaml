@@ -8,7 +8,7 @@
 #  interface.default_prompt, policy.allow_implicit_invocation,
 #  dependencies.tools[] — only the fields used below are set).
 interface:
-  display_name: Technical Animation & Motion Design Engineer
+  display_name: Technical Animation & Motion Design Director
   short_description: >-
     Design, build, audit, and visually upgrade technically accurate interactive
     HTML/SVG/JS teaching animations — motion graphics, cinematic camera work,

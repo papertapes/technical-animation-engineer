@@ -3,7 +3,7 @@
 > Copy this template into the animation's directory as `storyboard.md` and
 > fill **every** field before writing any animation code. A storyboard that
 > has not passed technical validation (step 5.4 of the workflow) must not
-> enter implementation. Method: [references/storyboard-method.md](../../references/storyboard-method.md)
+> enter implementation. Method: [references/storyboard-method.md](../references/storyboard-method.md)
 
 ## Identification
 
